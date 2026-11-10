@@ -646,6 +646,10 @@ body{font-family:var(--font)} .topbar h1{font-weight:800;letter-spacing:-.02em}
 .br-t th,.br-t td{border-bottom:1px solid var(--rule)} .br-t tr.alt td{background:var(--zebra)} .br-t tbody tr:hover td{background:var(--accent-soft)} .br-bar{border-radius:4px} .br-bar i{border-radius:2px}
 /* use the full width (the agent's personal pages keep their own reading column) */
 .content-inner{max-width:none} .content{padding:16px 18px}
+/* avatars: a photo over the initials (the initials show if there is no photo or it can't load) */
+.av,.lp-av,.avatar{position:relative;overflow:hidden} .av img,.lp-av img,.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.lp-av{overflow:visible} .lp-av img{border-radius:50%} .sg2-a .av{width:28px;height:28px;font-size:10.5px}
+.who{display:flex;align-items:center;gap:10px} .who .av{width:30px;height:30px;flex:none;border-radius:15px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
 /* phones: agents get a bottom tab bar */
 .tabbar{display:none}
 @media (max-width:900px){
@@ -772,7 +776,7 @@ var AGSCore = (function () {
   var SCHEMA = {
     Campaigns: ['CampaignID', 'Name', 'Status', 'Description'].concat(META),
     TeamLeads: ['TeamLeadID', 'FullName', 'Email', 'CampaignIDs', 'Status'].concat(META),
-    Agents: ['AgentID', 'EmployeeID', 'FullName', 'Email', 'CampaignID', 'TeamLeadID', 'Status', 'Notes'].concat(META),
+    Agents: ['AgentID', 'EmployeeID', 'FullName', 'Email', 'CampaignID', 'TeamLeadID', 'Status', 'Notes', 'PhotoUrl'].concat(META),
     // one row per agent per scheduled day; break times are clock times (HH:MM, 24-hour)
     Days: ['DayID', 'AgentID', 'Date', 'Shift', 'Break1', 'Lunch', 'Break2', 'CampaignID', 'TeamLeadID', 'Published', 'PublishedAt', 'Notes'].concat(META),
     Leaves: ['LeaveID', 'AgentID', 'CampaignID', 'TeamLeadID', 'Email', 'Dates', 'Portion', 'LeaveType', 'OtherType', 'Reason', 'Status', 'FirstApprover', 'SecondApprover', 'DecidedBy', 'DecidedAt', 'DecisionNote'].concat(META),
@@ -839,7 +843,7 @@ var AGSCore = (function () {
   var FIELDS = {
     campaigns: { Name: T(80), Status: E(LISTS.ActiveStatus), Description: T(1000) },
     teamLeads: { FullName: T(120), Email: T(200), CampaignIDs: IDS, Status: E(LISTS.ActiveStatus) },
-    agents: { EmployeeID: T(50), FullName: T(120), Email: T(200), CampaignID: ID, TeamLeadID: ID, Status: E(LISTS.ActiveStatus), Notes: T(1000) },
+    agents: { EmployeeID: T(50), FullName: T(120), Email: T(200), CampaignID: ID, TeamLeadID: ID, Status: E(LISTS.ActiveStatus), Notes: T(1000), PhotoUrl: T(600) },
     days: { AgentID: ID, Date: D, Shift: T(40), Break1: HM, Lunch: HM, Break2: HM, Notes: T(500) },
     leaves: { AgentID: ID, Portion: E(LISTS.Portion), LeaveType: E(LISTS.LeaveType), OtherType: T(80), Reason: T(1000) },
     users: { Email: T(200), DisplayName: T(120), Role: E(ASSIGNABLE_ROLES), TeamLeadID: ID, AgentID: ID, Active: B }
@@ -1110,7 +1114,7 @@ var AGSCore = (function () {
       .map(function (d) { return { DayID: d.DayID, AgentID: d.AgentID, Date: d.Date, Shift: d.Shift, Break1: d.Break1, Lunch: d.Lunch, Break2: d.Break2, CampaignID: d.CampaignID }; });
     var leave = []; ctx.repo.all('leaves').forEach(function (l) { if (live(l) && l.Status === 'Approved' && ok[l.AgentID]) leaveDates(l.Dates).forEach(function (d) { if (d >= from && d <= to) leave.push(l.AgentID + '|' + d); }); });
     return { days: days, leave: leave,
-      roster: agents.map(function (a) { return { AgentID: a.AgentID, FullName: a.FullName, CampaignID: a.CampaignID, TeamLeadID: a.TeamLeadID }; }),
+      roster: agents.map(function (a) { return { AgentID: a.AgentID, FullName: a.FullName, CampaignID: a.CampaignID, TeamLeadID: a.TeamLeadID, PhotoUrl: a.PhotoUrl || '' }; }),
       campaigns: ctx.repo.all('campaigns').filter(function (c) { return live(c) && c.Status !== 'Inactive'; }).map(function (c) { return { CampaignID: c.CampaignID, Name: c.Name, Status: c.Status }; }),
       teamLeads: ctx.repo.all('teamLeads').filter(live).map(function (t) { return { TeamLeadID: t.TeamLeadID, FullName: t.FullName, CampaignIDs: t.CampaignIDs }; }) };
   }
@@ -1305,7 +1309,16 @@ var AGSCore = (function () {
       if (m.TeamLeadID && !ctx.find('teamLeads', m.TeamLeadID)) e.TeamLeadID = 'Select a team lead.';
       if (m.EmployeeID && !uniqueAmong(ctx, 'agents', 'EmployeeID', m.EmployeeID, ex && ex.AgentID)) e.EmployeeID = 'Another agent already uses this employee ID.';
       if (m.Email && !isEmail(m.Email)) e.Email = 'Enter a valid email address.'; else if (m.Email) { m.Email = f.Email = m.Email.toLowerCase(); if (!uniqueAmong(ctx, 'agents', 'Email', m.Email, ex && ex.AgentID)) e.Email = 'Another agent already uses this email.'; }
+      if (f.PhotoUrl && !/^https:\/\/[^\s"'<>]+$/.test(f.PhotoUrl)) e.PhotoUrl = 'Enter a link starting with https://';
     });
+  } };
+  // An agent's own Google profile photo, saved when they sign in (only Google's photo addresses are accepted here).
+  H.setMyPhoto = { write: true, fn: function (ctx, p) {
+    if (!isAgentRole(ctx.user) || !ctx.user.agentId) return { changed: {} };
+    var url = s(p.url).trim(); if (!/^https:\/\/[a-z0-9-]+\.googleusercontent\.com\/[^\s"'<>]+$/i.test(url) || url.length > 600) throw AgsError('VALIDATION', 'Not a Google profile photo.');
+    var a = ctx.get('agents', ctx.user.agentId); if (a.PhotoUrl === url) return { changed: {} };
+    ctx.update('agents', a.AgentID, { PhotoUrl: url }, a.RecordVersion, 'PHOTO_FROM_SIGN_IN', { internal: true });
+    ctx.primary = { entity: 'agents', id: a.AgentID };
   } };
   H.saveUser = { write: true, admin: true, fn: function (ctx, p) {
     saveEntity(ctx, 'users', p, function (m, e, ex, f) {
@@ -1444,6 +1457,10 @@ var AGSCore = (function () {
       var r = rec('notifications', { AgentID: me.AgentID, Kind: x[0], Title: x[1], Body: x[2], Read: x[3], RefDate: today }); r.CreatedAt = r.UpdatedAt = nAt(x[4]); D.notifications.push(r);
     });
     var a2 = D.agents[1], a3 = D.agents[3];
+    var skins = ['#F2C9A0', '#E0AC7E', '#C68A5E', '#8D5A3B'], hairs = ['#2B2118', '#4A3020', '#1A1A1A', '#6B4A2E'], bgs = ['#DCEBFF', '#FFE6D6', '#E9E2FF', '#DDF5EA', '#FFF1C9'];
+    D.agents.forEach(function (a, i) { if (i % 3 === 2) return;   // some agents have no photo yet: initials show
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" fill="' + bgs[i % 5] + '"/><circle cx="32" cy="27" r="13" fill="' + skins[i % 4] + '"/><path d="M19 25c0-9 6-14 13-14s13 5 13 14c-3-5-8-7-13-7s-10 2-13 7z" fill="' + hairs[(i + 1) % 4] + '"/><path d="M10 64c2-13 11-19 22-19s20 6 22 19z" fill="' + ['#2F6FEB', '#3BA272', '#8B5CF6', '#E2775C'][i % 4] + '"/></svg>';
+      a.PhotoUrl = 'data:image/svg+xml,' + encodeURIComponent(svg); });
     D.settings = { SecondApprover: 'Celeste Navarro', LeaveLimitPerDay: '2', GridUrl: 'https://docs.google.com/spreadsheets/d/DEMO',
       GridSync: JSON.stringify({ at: today + 'T15:58:00.000Z', changes: 3, problems: [{ tab: gridTabName(today.slice(0, 7)), cell: 'P5', agent: a2.FullName, date: addDays(today, 11), value: '9pm-6', reason: '"9pm-6" is not a shift. Write it like 9:00PM-6:00AM or 9p-6a, pick one from the list, or OFF.' }],
         warnings: [{ tab: gridTabName(today.slice(0, 7)), cell: 'O6', agent: a3.FullName, date: addDays(today, 10), reason: 'On approved leave this day, but the sheet has a shift.' }] }) };
@@ -2090,6 +2107,10 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   function bothNow() { return C.clock(nowPht()) + ' PHT · ' + C.clock(nowMinutes()) + ' EST'; }
   // minutes since midnight now, in the app's time zone (fixed EST)
   function nowMinutes() { try { var p = new Intl.DateTimeFormat('en-GB', { timeZone: S.settings.Timezone, hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()).split(':'); return (+p[0] % 24) * 60 + +p[1]; } catch (e) { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); } }
+  // a person's avatar: their photo when there is one (falls back to initials if it can't load), else initials
+  function photoOf(id) { var a = (S.idx.agents && S.idx.agents[id]) || (S.data.roster || []).filter(function (r) { return r.AgentID === id; })[0]; return a && a.PhotoUrl ? a.PhotoUrl : ''; }
+  function avatar(person, cls) { var url = person.PhotoUrl || photoOf(person.AgentID), ok = /^(https:\/\/|data:image\/)/.test(url || '');
+    return '<span class="' + cls + '">' + esc(initials(String(person.FullName || '').split(', ').reverse().join(' '))) + (ok ? '<img src="' + esc(url) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '</span>'; }
   function unread() { return (S.data.notifications || []).filter(function (n) { return C.live(n) && !C.b(n.Read); }).length; }
   function renderShell() {
     var u = S.user, staff = !isAgentRole();
@@ -2103,7 +2124,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
         '<label class="sr-only" for="g-month">Month</label><select id="g-month" class="input input-sm" style="min-width:150px" data-change="gMonth">' + monthOptions() + '</select>'
         : '<button class="bell" id="bell" data-act="nav" data-page="notifs" aria-label="Notifications">' + icon('bell') + '<span id="bell-n" hidden></span></button>') +
       '<button class="sync" id="sync-pill" data-act="openSyncPanel" data-state="connected"><i aria-hidden="true"></i><span>Connected</span></button>' +
-      '<div class="rel"><button class="user-chip" data-act="toggleUser" aria-haspopup="true"><span class="avatar" aria-hidden="true">' + esc(initials(u.displayName)) + '</span><span class="u-name">' + esc(u.displayName) + '</span></button></div>' +
+      '<div class="rel"><button class="user-chip" data-act="toggleUser" aria-haspopup="true"><span class="avatar" aria-hidden="true">' + esc(initials(u.displayName)) + (S.picture ? '<img src="' + esc(S.picture) + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '</span><span class="u-name">' + esc(u.displayName) + '</span></button></div>' +
       '</header><main id="main" class="content" tabindex="-1"><div class="content-inner" id="page"></div></main>' +
       (staff ? '' : '<nav class="tabbar" id="tabbar" aria-label="Main"></nav>') + '</div></div>';
     paintSync();
@@ -2131,6 +2152,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
       if (out && out.mount) out.mount();
     } catch (e) { console.error(e); $('#page').innerHTML = '<div class="note bad" role="alert">This page could not be displayed (' + esc(e.message) + '). Refresh the data; if it continues, report it to an administrator.</div>'; }
     if (keepId) { var el = document.getElementById(keepId); if (el) el.focus(); }
+    if (isAgentRole() && S.mode !== 'demo' && S.picture && !S.photoSent && myAgent().AgentID && myAgent().PhotoUrl !== S.picture) { S.photoSent = true; Api.write('setMyPhoto', { url: S.picture }, 'Photo').then(function () { }, function () { }); }
     if ($('#live')) paintLive();
     paintSync();
   }
@@ -2168,7 +2190,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
 
   // The panel never scrolls: it shows as many names per group as fit, then "+N more" (down to counts only).
   function liveHtml(groups, lim) {
-    var person = function (x) { return '<div class="lp"><span class="lp-av lp-' + esc(x.k) + '">' + esc(initials(x.a.FullName.split(', ').reverse().join(' '))) + '</span><span class="lp-t"><b>' + esc(x.a.FullName) + '</b><small>' + esc(x.d) + '</small></span></div>'; };
+    var person = function (x) { return '<div class="lp">' + avatar(x.a, 'lp-av lp-' + esc(x.k)) + '<span class="lp-t"><b>' + esc(x.a.FullName) + '</b><small>' + esc(x.d) + '</small></span></div>'; };
     var grp = function (key, title, empty) { var xs = groups[key].map(function (x) { x.k = key; return x; }), shown = xs.slice(0, Math.max(0, lim)); return '<div class="lg"><div class="lg-h"><i class="ld ld-' + key + '"></i>' + title + '<span>' + xs.length + '</span></div>' + (xs.length ? shown.map(person).join('') + (xs.length > shown.length ? '<small class="lg-more">+' + (xs.length - shown.length) + ' more</small>' : '') : (lim >= 0 ? '<small class="lg-none">' + empty + '</small>' : '')) + '</div>'; };
     return '<div class="live-h"><b>Right now</b><span>' + esc(C.clock(nowPht())) + ' PHT</span></div>' + (lim >= 0 ? '<small class="lg-none">' + esc(C.clock(nowMinutes())) + ' EST · times below are PHT' + (isAgentRole() ? ' · ' + esc(viewCampaign() ? campName(viewCampaign()) : 'All campaigns') : '') + '</small>' : '') +
       grp('break', 'On break', 'Nobody on break') + grp('lunch', 'At lunch', 'Nobody at lunch') + grp('shift', 'On shift', 'Nobody on shift') +
@@ -2314,7 +2336,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var dh = '<div class="sg2-row sg2-head"><span></span>' + dates.map(function (d) { return '<span class="sg2-d' + (d === S.today ? ' is-today' : '') + (/Sat|Sun/.test(wdShort(d)) ? ' is-we' : '') + '"><small>' + wdShort(d) + '</small><b>' + (+d.slice(8, 10)) + '</b></span>'; }).join('') + '</div>';
     var body = order.map(function (k) { return '<div class="sg2-g"><div class="sg2-gh">' + esc(k) + '</div>' + groups[k].map(function (r, ri) {
       var mine = r.AgentID === a.AgentID;
-      return '<div class="sg2-row' + (mine ? ' is-me' : '') + (ri % 2 ? ' alt' : '') + '"><span class="sg2-a"><span class="av">' + esc(initials(r.FullName.split(', ').reverse().join(' '))) + '</span><span><b>' + esc(r.FullName) + (mine ? ' (you)' : '') + '</b></span></span>' + dates.map(function (d) {
+      return '<div class="sg2-row' + (mine ? ' is-me' : '') + (ri % 2 ? ' alt' : '') + '"><span class="sg2-a">' + avatar(r, 'av') + '<span><b>' + esc(r.FullName) + (mine ? ' (you)' : '') + '</b></span></span>' + dates.map(function (d) {
         var x = idx[r.AgentID + '|' + d], lv = off[r.AgentID + '|' + d], tn = lv ? 'leave' : x && x.Shift ? shiftTone(x.Shift) : 'none';
         return '<button class="sg2-c tile-' + tn + (d === S.today ? ' is-today' : '') + (/Sat|Sun/.test(wdShort(d)) ? ' is-we' : '') + '" data-act="teamDay" data-a="' + esc(r.AgentID) + '" data-d="' + d + '" aria-label="' + esc(r.FullName + ', ' + dLabel(d) + ': ' + (lv ? 'on leave' : x && x.Shift ? shiftText(x.Shift) : 'not published')) + '">' + esc(lv ? 'VL' : x && x.Shift ? shiftShort(x.Shift) : '') + '</button>';
       }).join('') + '</div>'; }).join('') + '</div>'; }).join('');
@@ -2467,7 +2489,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var body = order.map(function (k) {
       var list = groups[k], sums = dates.map(function (d) { var on = 0, lv = 0; list.forEach(function (a) { var l = leaveOn(a.AgentID, d), x = dayOf(a.AgentID, d); if (l && l.Status === 'Approved') lv++; else if (x && x.Shift && !C.shiftInfo(x.Shift).off) on++; }); return on + (lv ? ' · ' + lv : ''); });
       return '<div class="sg2-g"><div class="sg2-gh">' + esc(k) + '</div>' + list.map(function (a, ri) {
-        return '<div class="sg2-row' + (ri % 2 ? ' alt' : '') + '"><span class="sg2-a"><span class="av">' + esc(initials(a.FullName.split(', ').reverse().join(' '))) + '</span><span><b>' + esc(a.FullName) + '</b><small>' + esc(a.EmployeeID || '') + '</small></span></span>' + dates.map(function (d) {
+        return '<div class="sg2-row' + (ri % 2 ? ' alt' : '') + '"><span class="sg2-a">' + avatar(a, 'av') + '<span><b>' + esc(a.FullName) + '</b><small>' + esc(a.EmployeeID || '') + '</small></span></span>' + dates.map(function (d) {
           var x = dayOf(a.AgentID, d), lv = leaveOn(a.AgentID, d), ok = lv && lv.Status === 'Approved', tn = ok ? 'leave' : x && x.Shift ? shiftTone(x.Shift) : 'none', warn = x && C.checkBreaks(x).length;
           return '<button class="sg2-c tile-' + tn + (lv && !ok ? ' mc-req' : '') + (d === S.today ? ' is-today' : '') + (/Sat|Sun/.test(wdShort(d)) ? ' is-we' : '') + '" data-act="editDay" data-a="' + esc(a.AgentID) + '" data-d="' + d + '" aria-label="' + esc(a.FullName + ', ' + dLabel(d) + ': ' + (ok ? 'on leave' : x && x.Shift ? shiftText(x.Shift) : 'no shift')) + '" title="' + esc(x && x.Shift ? shiftText(x.Shift) + ' PHT' + (shiftEst(x.Shift) ? '\n' + shiftEst(x.Shift) : '') + (breakLine(x) ? '\n' + breakLine(x) + ' (PHT)' : '') : 'No shift') + '">' + esc(ok ? 'VL' : x && x.Shift ? shiftShort(x.Shift) : '') + (warn ? '<i class="sg2-w" title="Breaks outside the rules">!</i>' : '') + '</button>';
         }).join('') + '</div>';
@@ -2523,7 +2545,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var page = head + '<section class="card card-flush"><div class="table-wrap"><table class="t br-t"><thead><tr><th>Agent</th><th>Shift</th><th>1st break</th><th>Lunch</th><th>Last break</th><th class="br-tl-h"><div class="br-hours">' + hours.join('') + '</div></th></tr></thead><tbody>' +
       rows.map(function (x) {
         var si = C.shiftInfo(x.d.Shift), w = C.checkBreaks(x.d), blk = function (t, len, cls) { var v = C.parseTime(t); return v === null ? '' : '<i class="' + cls + '" style="left:' + pos(v) + '%;width:' + (len / span * 100) + '%"></i>'; };
-        return '<tr data-day="' + esc(x.d.DayID) + '" class="' + (rows.indexOf(x) % 2 ? 'alt' : '') + '"><td><b>' + esc(x.a.FullName) + (ro && x.a.AgentID === myAgent().AgentID ? ' (you)' : '') + '</b><div class="t-sub">' + esc(campName(x.a.CampaignID)) + '</div></td><td style="white-space:nowrap">' + esc(shiftText(x.d.Shift)) + '</td>' +
+        return '<tr data-day="' + esc(x.d.DayID) + '" class="' + (rows.indexOf(x) % 2 ? 'alt' : '') + '"><td><div class="who">' + avatar(x.a, 'av') + '<div><b>' + esc(x.a.FullName) + (ro && x.a.AgentID === myAgent().AgentID ? ' (you)' : '') + '</b><div class="t-sub">' + esc(campName(x.a.CampaignID)) + '</div></div></div></td><td style="white-space:nowrap">' + esc(shiftText(x.d.Shift)) + '</td>' +
           ['Break1', 'Lunch', 'Break2'].map(function (k3) { return ro ? '<td class="br-ro">' + esc(x.d[k3] ? C.clock(x.d[k3]) : '—') + '</td>' : '<td><input type="time" step="900" class="input input-sm br-in" data-a="' + esc(x.a.AgentID) + '" data-k="' + k3 + '" value="' + esc(x.d[k3]) + '" aria-label="' + esc(x.a.FullName + ' ' + k3) + '"></td>'; }).join('') +
           '<td class="br-tl"><div class="br-bar"><i class="br-shift" style="left:' + pos(si.start) + '%;width:' + (si.length / span * 100) + '%"></i>' + blk(x.d.Break1, 15, 'br-b') + blk(x.d.Lunch, 60, 'br-l') + blk(x.d.Break2, 15, 'br-b') + '</div>' + (w.length ? '<div class="small g-warn">⚠ ' + esc(w.join(' ')) + '</div>' : '') + '</td></tr>';
       }).join('') +
@@ -2644,7 +2666,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     agents: function (f) {
       var q = (f.q || '').toLowerCase(), list = S.data.agents.filter(function (a) { return C.live(a) && (!S.g.campaignId || a.CampaignID === S.g.campaignId) && (!q || (a.FullName + ' ' + a.EmployeeID + ' ' + a.Email).toLowerCase().indexOf(q) >= 0); }).sort(function (a, b) { return a.FullName < b.FullName ? -1 : 1; });
       return '<div class="page-head"><div><p>Each agent belongs to one campaign and one team lead. The work email is what the agent signs in with.</p></div><div class="actions"><input class="input input-sm" placeholder="Search" data-input="pfText" data-page="settings" data-key="q" id="pf-settings-q" value="' + esc(f.q || '') + '"><button class="btn btn-primary" data-act="editAgent">Add agent</button></div></div><section class="panel">' +
-        tblS(['Agent', 'Employee ID', 'Campaign', 'Team lead', 'Status', 'Can sign in', ''], list.map(function (a) { var u = S.data.users.filter(function (x) { return C.live(x) && x.AgentID === a.AgentID; })[0]; return [{ html: '<b>' + esc(a.FullName) + '</b><div class="t-sub">' + (a.Email ? esc(a.Email) : '<span class="g-warn">no email</span>') + '</div>' }, a.EmployeeID, campName(a.CampaignID), tlName(a.TeamLeadID), a.Status, u ? (C.b(u.Active) ? 'Yes' : 'Inactive') : { html: '<button class="btn btn-sm" data-act="agentUser" data-id="' + esc(a.AgentID) + '"' + (a.Email ? '' : ' disabled title="Add the work email first"') + '>Give access</button>' }, editBtn('editAgent', a.AgentID)]; })) + '</section>';
+        tblS(['Agent', 'Employee ID', 'Campaign', 'Team lead', 'Status', 'Can sign in', ''], list.map(function (a) { var u = S.data.users.filter(function (x) { return C.live(x) && x.AgentID === a.AgentID; })[0]; return [{ html: '<div class="who">' + avatar(a, 'av') + '<div><b>' + esc(a.FullName) + '</b><div class="t-sub">' + (a.Email ? esc(a.Email) : '<span class="g-warn">no email</span>') + '</div></div></div>' }, a.EmployeeID, campName(a.CampaignID), tlName(a.TeamLeadID), a.Status, u ? (C.b(u.Active) ? 'Yes' : 'Inactive') : { html: '<button class="btn btn-sm" data-act="agentUser" data-id="' + esc(a.AgentID) + '"' + (a.Email ? '' : ' disabled title="Add the work email first"') + '>Give access</button>' }, editBtn('editAgent', a.AgentID)]; })) + '</section>';
     },
     users: function () {
       return '<div class="page-head"><div><p>Who can sign in: Admin / WFM (everything), Team lead (their team), Agent (their own schedule and leave).</p></div><div class="actions"><button class="btn btn-primary" data-act="editUser">Add user</button></div></div><section class="panel">' +
@@ -2678,7 +2700,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   };
   ACT.editAgent = function (el) {
     var a = el && el.dataset.id ? S.idx.agents[el.dataset.id] : null;
-    simpleForm({ title: a ? 'Edit agent' : 'Add agent', rec: a, idKey: 'AgentID', action: 'saveAgent', done: 'Agent saved.', fields: [{ k: 'FullName', label: 'Name (Last, First)', req: true, max: 120 }, { k: 'Email', label: 'Work email', type: 'email', max: 200, hint: 'The company Google account the agent signs in with.' }, { k: 'EmployeeID', label: 'Employee ID', max: 50 },
+    simpleForm({ title: a ? 'Edit agent' : 'Add agent', rec: a, idKey: 'AgentID', action: 'saveAgent', done: 'Agent saved.', fields: [{ k: 'FullName', label: 'Name (Last, First)', req: true, max: 120 }, { k: 'Email', label: 'Work email', type: 'email', max: 200, hint: 'The company Google account the agent signs in with.' }, { k: 'EmployeeID', label: 'Employee ID', max: 50 }, { k: 'PhotoUrl', label: 'Photo link (optional)', max: 600, span: 'span2', hint: 'Filled in automatically from the agent\'s Google account when they sign in. Paste an https:// image link to set one before that.' },
       { k: 'CampaignID', label: 'Campaign', type: 'select', req: true, options: campOpts(a ? a.CampaignID : S.g.campaignId, 'Select campaign') }, { k: 'TeamLeadID', label: 'Team lead', type: 'select', options: opts(S.data.teamLeads.filter(C.live).map(function (t) { return [t.TeamLeadID, t.FullName]; }), a ? a.TeamLeadID : '', 'None') },
       { k: 'Status', label: 'Status', type: 'select', options: opts(C.LISTS.ActiveStatus, a ? a.Status : 'Active') }, { k: 'Notes', label: 'Notes', type: 'textarea', span: 'span2', max: 1000 }] });
   };
