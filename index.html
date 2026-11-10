@@ -2123,13 +2123,23 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     "Lajo, Ella Mae": "18mpAaayLUqGVVFRxJNL0m1758KmbD2_L",
     "Aban, Ma Melanie": "1PoMv9DLMKMmQOKtViCjwC1WGTkBtYqUh",
     "Villarta, Remington": "1hYaQZXTDBvad10bskgII8Zcr8K8Ve30s",
-    "Lumactod, Nicole": "1pfZJOfGWRlsoDcaGn9i1kOmvvr6N-yVo",
+    "Lumactod, Nikki": "1pfZJOfGWRlsoDcaGn9i1kOmvvr6N-yVo",
     "Dujale, John Vincent": "1pZPgL6iVxM3ESm-Qgn7HlydSF8VNXG61",
     "Navarro, Stephanie": "1qj57VqzTh9eEDx1BCn_JJdwFz1gFbp4u",
     "Lopez, Maria Nelia": "1wbfqhNlp7QrtFacooSH5ID0smP_i_Oyr",
-    "Reyes, Andrea": "1WCKfr3F-MnjV_AN_ab-CaR8qOtlGsEyl"};
+    "Reyes, Andrea": "1WCKfr3F-MnjV_AN_ab-CaR8qOtlGsEyl",
+    "Bugto, Alexandra Monique": "1rlrwKaKPlqyKCdCzSNug3spJUNhP7Z1N",
+    "Matanguihan, Deniele": "1UBHzv_WdnPiyKAlKUjoDwdV9ccS7k6T-",
+    "Lim, Dyan": "1RRpX0zS5Yd9L3ZLoS-pJwfL15dMoSgmR",
+    "Pineda, Marc Francis": "1IAzDs1IoUound63RGbxkk9vYDPYu257L",
+    "Flores, Gohhan": "1y_h5fFW864BznOlxwlA8RGJUgnW1H3ff",
+    "Capitle, Loren Kate": "1dUhiS3jkfyUi9VD2uc90MsMhKuhd4_hy",
+    "Guzman, Joseph Roy": "19NPGZH5P0DupAWjmfcJKU64ZnqHBA3Sc",
+    "Respicio, Sherry-an": "1J2L_CzMmgZ-H4RcGSPcrlLvR9gZuWg6I"};
   function nameKey(n) { return String(n || '').toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').trim(); }
-  var PHOTO_BY_NAME = {}; Object.keys(AGENT_PHOTOS).forEach(function (k) { PHOTO_BY_NAME[nameKey(k)] = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(AGENT_PHOTOS[k]) + '&sz=w128'; });
+  // two Google image addresses for each Drive photo: the second is tried if the first fails to load
+  var PHOTO_BY_NAME = {}; Object.keys(AGENT_PHOTOS).forEach(function (k) { PHOTO_BY_NAME[nameKey(k)] = 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(AGENT_PHOTOS[k]) + '=s128-c'; });
+  function altPhoto(url) { var m = /^https:\/\/lh3\.googleusercontent\.com\/d\/([A-Za-z0-9_-]+)=/.exec(url || ''); return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w128' : ''; }
   // exact name first; else the same last name with all listed first names contained in the roster's (one match only),
   // e.g. "Navarro, Stephanie" for "Navarro, Joanne Stephanie"
   function listedPhoto(fullName) {
@@ -2141,7 +2151,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   // a person's avatar: the listed photo first, else their saved photo link, else initials (also if a photo can't load)
   function photoOf(id) { var a = (S.idx.agents && S.idx.agents[id]) || (S.data.roster || []).filter(function (r) { return r.AgentID === id; })[0]; return a ? listedPhoto(a.FullName) || a.PhotoUrl || '' : ''; }
   function avatar(person, cls) { var url = listedPhoto(person.FullName) || person.PhotoUrl || photoOf(person.AgentID), ok = /^(https:\/\/|data:image\/)/.test(url || '');
-    return '<span class="' + cls + '">' + esc(initials(String(person.FullName || '').split(', ').reverse().join(' '))) + (ok ? '<img src="' + esc(url) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '</span>'; }
+    return '<span class="' + cls + '">' + esc(initials(String(person.FullName || '').split(', ').reverse().join(' '))) + (ok ? '<img src="' + esc(url) + '" alt="" loading="lazy" referrerpolicy="no-referrer"' + (altPhoto(url) ? ' data-alt="' + esc(altPhoto(url)) + '"' : '') + ' onerror="if(this.dataset.alt){this.src=this.dataset.alt;this.dataset.alt=&quot;&quot;}else{this.remove()}">' : '') + '</span>'; }
   function myPhoto() { var a = isAgentRole() ? myAgent() : null; return (a && a.FullName && listedPhoto(a.FullName)) || S.picture || ''; }
   function unread() { return (S.data.notifications || []).filter(function (n) { return C.live(n) && !C.b(n.Read); }).length; }
   function renderShell() {
