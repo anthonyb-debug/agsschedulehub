@@ -25,7 +25,7 @@
  * needed: identity comes from the Google session on the server.
  * ===================================================================== */
 window.AGS_CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbwe62w-pZbQKYlRFg5IdqGMLqQUVx7ec7eV_J71qSAYGQsZ-_bJVjq1aW35guqZytkdTw/exec',
+  API_URL: '',
   GOOGLE_CLIENT_ID: '475733208759-pmvcgkpk7j32bopbstj0jmm3rj9vii4n.apps.googleusercontent.com',
   ALLOWED_DOMAIN: 'allianceglobalsolutions.com',
   ENABLE_DEMO: false
@@ -2109,10 +2109,40 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   function bothNow() { return C.clock(nowPht()) + ' PHT · ' + C.clock(nowMinutes()) + ' EST'; }
   // minutes since midnight now, in the app's time zone (fixed EST)
   function nowMinutes() { try { var p = new Intl.DateTimeFormat('en-GB', { timeZone: S.settings.Timezone, hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()).split(':'); return (+p[0] % 24) * 60 + +p[1]; } catch (e) { var d = new Date(); return d.getHours() * 60 + d.getMinutes(); } }
-  // a person's avatar: their photo when there is one (falls back to initials if it can't load), else initials
-  function photoOf(id) { var a = (S.idx.agents && S.idx.agents[id]) || (S.data.roster || []).filter(function (r) { return r.AgentID === id; })[0]; return a && a.PhotoUrl ? a.PhotoUrl : ''; }
-  function avatar(person, cls) { var url = person.PhotoUrl || photoOf(person.AgentID), ok = /^(https:\/\/|data:image\/)/.test(url || '');
+  // Agents' photos (Google Drive file IDs), matched by name "Last, First". Share each file "Anyone with the link – Viewer".
+  var AGENT_PHOTOS = {"Perez, Karen": "1H2DWKVJlbrEJ2vAUEl5XW2npL3aQ2Q_H",
+    "Galong, Julia Mae": "1eiuUqnuUKDoazdy0kA36_xnzb7MzQJXl",
+    "Buranis, Shenelyn": "11XR0flOnHaFb6zhlQD7wR_u8SBPIakjT",
+    "Bernardo, Sean": "1ngQYH6e5wd6XyFtTyCxfGnOs35aJ31ud",
+    "Sagun, Rae": "1dcNTFtWCI8TSejCkh63MMYJvnNwdN55A",
+    "Padullano, Larinz": "1_px4OHpKx2SdIGM3wB3NM6XHC8HLXu5t",
+    "Rapis, Samuel": "145mvS-xp6fuo-yWMYiSEQ0BIJcHtNWoi",
+    "Magbanua, Rubie": "19rQzBv8EEYpKCH5tmaJCMp2YdNaUF_Xj",
+    "Angel, Byron Jake": "1Nk1JBuEdoH26w_BiIiTFvS7z72hYxj2s",
+    "Regla, Ma Cecilia": "1nvFU7jHRVlxvyXVFj5NELnvEnUhIid-h",
+    "Lajo, Ella Mae": "18mpAaayLUqGVVFRxJNL0m1758KmbD2_L",
+    "Aban, Ma Melanie": "1PoMv9DLMKMmQOKtViCjwC1WGTkBtYqUh",
+    "Villarta, Remington": "1hYaQZXTDBvad10bskgII8Zcr8K8Ve30s",
+    "Lumactod, Nikki": "1pfZJOfGWRlsoDcaGn9i1kOmvvr6N-yVo",
+    "Dujale, John Vincent": "1pZPgL6iVxM3ESm-Qgn7HlydSF8VNXG61",
+    "Navarro, Stephanie": "1qj57VqzTh9eEDx1BCn_JJdwFz1gFbp4u",
+    "Lopez, Maria Nelia": "1wbfqhNlp7QrtFacooSH5ID0smP_i_Oyr",
+    "Reyes, Andrea": "1WCKfr3F-MnjV_AN_ab-CaR8qOtlGsEyl"};
+  function nameKey(n) { return String(n || '').toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').replace(/\s*,\s*/g, ', ').trim(); }
+  var PHOTO_BY_NAME = {}; Object.keys(AGENT_PHOTOS).forEach(function (k) { PHOTO_BY_NAME[nameKey(k)] = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(AGENT_PHOTOS[k]) + '&sz=w128'; });
+  // exact name first; else the same last name with all listed first names contained in the roster's (one match only),
+  // e.g. "Navarro, Stephanie" for "Navarro, Joanne Stephanie"
+  function listedPhoto(fullName) {
+    var k = nameKey(fullName); if (PHOTO_BY_NAME[k]) return PHOTO_BY_NAME[k];
+    var p2 = k.split(', '), last = p2[0], given = (p2[1] || '').split(' ').filter(Boolean); if (!last || !given.length) return '';
+    var hits = Object.keys(PHOTO_BY_NAME).filter(function (x) { var q = x.split(', '); if (q[0] !== last) return false; var g = (q[1] || '').split(' ').filter(Boolean); return g.length && g.every(function (w) { return given.indexOf(w) >= 0; }); });
+    return hits.length === 1 ? PHOTO_BY_NAME[hits[0]] : '';
+  }
+  // a person's avatar: the listed photo first, else their saved photo link, else initials (also if a photo can't load)
+  function photoOf(id) { var a = (S.idx.agents && S.idx.agents[id]) || (S.data.roster || []).filter(function (r) { return r.AgentID === id; })[0]; return a ? listedPhoto(a.FullName) || a.PhotoUrl || '' : ''; }
+  function avatar(person, cls) { var url = listedPhoto(person.FullName) || person.PhotoUrl || photoOf(person.AgentID), ok = /^(https:\/\/|data:image\/)/.test(url || '');
     return '<span class="' + cls + '">' + esc(initials(String(person.FullName || '').split(', ').reverse().join(' '))) + (ok ? '<img src="' + esc(url) + '" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '</span>'; }
+  function myPhoto() { var a = isAgentRole() ? myAgent() : null; return (a && a.FullName && listedPhoto(a.FullName)) || S.picture || ''; }
   function unread() { return (S.data.notifications || []).filter(function (n) { return C.live(n) && !C.b(n.Read); }).length; }
   function renderShell() {
     var u = S.user, staff = !isAgentRole();
@@ -2126,7 +2156,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
         '<label class="sr-only" for="g-month">Month</label><select id="g-month" class="input input-sm" style="min-width:150px" data-change="gMonth">' + monthOptions() + '</select>'
         : '<button class="bell" id="bell" data-act="nav" data-page="notifs" aria-label="Notifications">' + icon('bell') + '<span id="bell-n" hidden></span></button>') +
       '<button class="sync" id="sync-pill" data-act="openSyncPanel" data-state="connected"><i aria-hidden="true"></i><span>Connected</span></button>' +
-      '<div class="rel"><button class="user-chip" data-act="toggleUser" aria-haspopup="true"><span class="avatar" aria-hidden="true">' + esc(initials(u.displayName)) + (S.picture ? '<img src="' + esc(S.picture) + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '</span><span class="u-name">' + esc(u.displayName) + '</span></button></div>' +
+      '<div class="rel"><button class="user-chip" data-act="toggleUser" aria-haspopup="true"><span class="avatar" aria-hidden="true">' + esc(initials(u.displayName)) + (myPhoto() ? '<img src="' + esc(myPhoto()) + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '</span><span class="u-name">' + esc(u.displayName) + '</span></button></div>' +
       '</header><main id="main" class="content" tabindex="-1"><div class="content-inner" id="page"></div></main>' +
       (staff ? '' : '<nav class="tabbar" id="tabbar" aria-label="Main"></nav>') + '</div></div>';
     paintSync();
