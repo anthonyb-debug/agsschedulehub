@@ -650,6 +650,8 @@ body{font-family:var(--font)} .topbar h1{font-weight:800;letter-spacing:-.02em}
 .av,.lp-av,.avatar{position:relative;overflow:hidden} .av img,.lp-av img,.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}
 .lp-av{overflow:visible} .lp-av img{border-radius:50%} .sg2-a .av{width:28px;height:28px;font-size:10.5px}
 .who{display:flex;align-items:center;gap:10px} .who .av{width:30px;height:30px;flex:none;border-radius:15px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
+.sprout-note{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border-radius:12px;background:#FFF8EC;border:1px solid #F6DDB0;color:#5A3A00;font-size:13px} .sprout-note b{font-size:13.5px;color:#6B4200}
+.sprout-hint{align-self:center;color:#8A5300;font-weight:600}
 /* phones: agents get a bottom tab bar */
 .tabbar{display:none}
 @media (max-width:900px){
@@ -2230,7 +2232,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
       reindex(); render();
     }, function (e) { S.loadedRanges = S.loadedRanges.filter(function (x) { return x !== m; }); toast('That month could not be loaded: ' + e.message, 'bad'); });
   }
-  function scopedAgents() { return S.data.agents.filter(function (a) { return C.live(a) && a.Status !== 'Inactive' && (!S.g.campaignId || a.CampaignID === S.g.campaignId); }).sort(function (a, b) { return (campName(a.CampaignID) + tlName(a.TeamLeadID) + a.FullName) < (campName(b.CampaignID) + tlName(b.TeamLeadID) + b.FullName) ? -1 : 1; }); }
+  function scopedAgents() { return S.data.agents.filter(function (a) { return C.live(a) && a.Status !== 'Inactive' && (!S.g.campaignId || a.CampaignID === S.g.campaignId); }).sort(function (a, b) { return (campName(a.CampaignID) + '|' + a.FullName) < (campName(b.CampaignID) + '|' + b.FullName) ? -1 : 1; }); }
   // a shift's timeline: positions of breaks and lunch along the shift, in %
   function timeline(d, nowRel) {
     var si = C.shiftInfo(d.Shift); if (!si.valid || si.off || si.blank) return '';
@@ -2327,12 +2329,12 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     ensureMonth(f.start.slice(0, 7)); ensureMonth(C.addDays(f.start, 13).slice(0, 7));
     var dates = []; for (var i = 0; i < 14; i++) dates.push(C.addDays(f.start, i));
     var camps = S.data.campaigns.filter(C.live), list = (S.data.roster || []).filter(function (r) { return !f.cid || r.CampaignID === f.cid; })
-      .sort(function (p, q) { return (campName(p.CampaignID) + tlName(p.TeamLeadID) + p.FullName) < (campName(q.CampaignID) + tlName(q.TeamLeadID) + q.FullName) ? -1 : 1; });
+      .sort(function (p, q) { return (campName(p.CampaignID) + '|' + p.FullName) < (campName(q.CampaignID) + '|' + q.FullName) ? -1 : 1; });
     var head = '<div class="row-h"><div class="seg-nav"><button class="btn-sq" data-act="teamGo" data-d="-14" aria-label="Previous two weeks">‹</button><b>' + esc(dLabel(dates[0]) + ' – ' + dLabel(dates[13])) + '</b><button class="btn-sq" data-act="teamGo" data-d="14" aria-label="Next two weeks">›</button>' + (f.start !== mondayOf(S.today) ? '<button class="link" data-act="teamGo" data-d="0">Today</button>' : '') + '</div>' +
       '<div class="seg-nav"><button class="btn btn-soft" data-act="nav" data-page="breaks">Breaks and lunch</button><label class="sr-only" for="team-c">Campaign</label><select id="team-c" class="input input-sm" style="width:auto" data-change="teamCamp">' + opts([['', 'All campaigns']].concat(camps.map(function (c) { return [c.CampaignID, c.Name]; })), f.cid) + '</select></div></div>' +
       '<p class="small muted" style="margin:0 0 10px">Published schedules, read-only. Tap a day for the breaks and lunch. Dates and shift times are PHT; the highlighted day is today in EST.</p>';
     if (!list.length) return '<div class="team-page">' + head + '<section class="card">' + emptyState('Nobody in this campaign', '') + '</section></div>';
-    var groups = {}, order = []; list.forEach(function (r) { var k = campName(r.CampaignID) + ' · ' + tlName(r.TeamLeadID); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(r); });
+    var groups = {}, order = []; list.forEach(function (r) { var k = campName(r.CampaignID); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(r); });
     var dh = '<div class="sg2-row sg2-head"><span></span>' + dates.map(function (d) { return '<span class="sg2-d' + (d === S.today ? ' is-today' : '') + (/Sat|Sun/.test(wdShort(d)) ? ' is-we' : '') + '"><small>' + wdShort(d) + '</small><b>' + (+d.slice(8, 10)) + '</b></span>'; }).join('') + '</div>';
     var body = order.map(function (k) { return '<div class="sg2-g"><div class="sg2-gh">' + esc(k) + '</div>' + groups[k].map(function (r, ri) {
       var mine = r.AgentID === a.AgentID;
@@ -2358,9 +2360,9 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var list = S.data.leaves.filter(function (l) { return C.live(l) && (!S.g.campaignId || l.CampaignID === S.g.campaignId); });
     if (!staff) {
       var mine = list.slice().sort(function (a, b) { return a.Dates < b.Dates ? 1 : -1; });
-      return '<div class="agent-page"><button class="btn btn-primary btn-big" data-act="requestVl">Request leave</button><span class="eyebrow">My requests</span>' + (mine.length ? mine.map(function (l) { var ds = C.leaveDates(l.Dates);
+      return '<div class="agent-page"><div class="sprout-note" role="note"><b>Remember to file in Sprout</b><span>Every leave requested here must also be filed in Sprout. Download the Time Off Request PDF and attach it to your Sprout leave application.</span></div><button class="btn btn-primary btn-big" data-act="requestVl">Request leave</button><span class="eyebrow">My requests</span>' + (mine.length ? mine.map(function (l) { var ds = C.leaveDates(l.Dates);
         return '<div class="req-card"><div class="rq-top"><b>' + esc(rangeText(ds)) + '</b>' + statusPill(l.Status) + '</div><small class="muted">' + esc((l.LeaveType === 'Other' ? 'Other: ' + l.OtherType : l.LeaveType) + ' · ' + l.Portion + (l.Reason ? ' · ' + l.Reason : '') + (l.DecidedBy ? ' · ' + l.Status.toLowerCase() + ' by ' + l.DecidedBy : '')) + '</small>' + (l.DecisionNote ? '<small class="muted">“' + esc(l.DecisionNote) + '”</small>' : '') +
-          '<div class="rq-act"><button class="btn btn-soft" data-act="vlPdf" data-id="' + esc(l.LeaveID) + '">' + icon('download') + 'Download form</button>' + (C.activeLeave(l) && ds[0] >= S.today ? '<button class="btn btn-ghost" data-act="vlCancel" data-id="' + esc(l.LeaveID) + '">Cancel</button>' : '') + '</div></div>'; }).join('') : '<section class="card">' + emptyState('No requests yet', 'Your leave requests will show here.') + '</section>') + '</div>';
+          '<div class="rq-act"><button class="btn btn-soft" data-act="vlPdf" data-id="' + esc(l.LeaveID) + '">' + icon('download') + 'Download form</button>' + (l.Status === 'Pending' ? '<small class="sprout-hint">File in Sprout with this PDF</small>' : '') + (C.activeLeave(l) && ds[0] >= S.today ? '<button class="btn btn-ghost" data-act="vlCancel" data-id="' + esc(l.LeaveID) + '">Cancel</button>' : '') + '</div></div>'; }).join('') : '<section class="card">' + emptyState('No requests yet', 'Your leave requests will show here.') + '</section>') + '</div>';
     }
     var pend = list.filter(function (l) { return l.Status === 'Pending'; });
     var tabs = [['pending', 'To approve · ' + pend.length], ['all', 'All requests'], ['cal', 'Calendar']];
@@ -2371,7 +2373,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     if (!rows.length) return head + '<section class="card">' + emptyState(f.tab === 'pending' ? 'Nothing to approve' : 'No requests yet', '') + '</section>';
     return head + '<section class="card card-flush"><div class="table-wrap"><table class="t t2"><thead><tr><th>Dates</th><th>Agent</th><th>Type</th><th>Status</th><th></th></tr></thead><tbody>' + rows.map(function (l) {
       var ds = C.leaveDates(l.Dates), full = LOAD_LIMIT() && ds.some(function (d) { return loadOn(l.CampaignID, d) > LOAD_LIMIT(); });
-      return '<tr><td><b>' + esc(rangeText(ds)) + '</b><div class="t-sub">' + plural(ds.length, 'day') + ' · ' + esc(l.Portion) + (full ? ' · <span class="g-warn">over the daily limit</span>' : '') + '</div></td><td><b>' + esc(agName(l.AgentID)) + '</b><div class="t-sub">' + esc(campName(l.CampaignID) + ' · ' + tlName(l.TeamLeadID)) + '</div></td>' +
+      return '<tr><td><b>' + esc(rangeText(ds)) + '</b><div class="t-sub">' + plural(ds.length, 'day') + ' · ' + esc(l.Portion) + (full ? ' · <span class="g-warn">over the daily limit</span>' : '') + '</div></td><td><b>' + esc(agName(l.AgentID)) + '</b><div class="t-sub">' + esc(campName(l.CampaignID)) + '</div></td>' +
         '<td>' + esc(l.LeaveType === 'Other' ? 'Other: ' + l.OtherType : l.LeaveType) + (l.Reason ? '<div class="t-sub">' + esc(l.Reason) + '</div>' : '') + '</td><td>' + statusPill(l.Status) + (l.DecidedBy ? '<div class="t-sub">' + esc(l.DecidedBy) + '</div>' : '') + '</td>' +
         '<td class="t-act"><button class="btn btn-sm btn-soft" data-act="vlPdf" data-id="' + esc(l.LeaveID) + '">Form</button>' +
         (l.Status === 'Pending' && cap('approveLeave') ? '<button class="btn btn-sm btn-primary" data-act="vlDecide" data-v="Approved" data-id="' + esc(l.LeaveID) + '">Approve</button><button class="btn btn-sm" data-act="vlDecide" data-v="Declined" data-id="' + esc(l.LeaveID) + '">Decline</button>' : '') +
@@ -2422,7 +2424,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
         closeModal(true); var l = (res.changed && res.changed.leaves || [])[0];
         S.data.leaveLoad = S.data.leaveLoad || {}; if (l) C.leaveDates(l.Dates).forEach(function (d) { var k = l.CampaignID + '|' + d; S.data.leaveLoad[k] = (S.data.leaveLoad[k] || 0) + 1; });
         S.f.leave = S.f.leave || {}; S.f.leave.tab = staff ? 'all' : 'mine'; go('leave'); render();
-        if (l) confirmDialog({ title: 'Request submitted', message: 'Download the Time Off Request form now and attach it in Sprout. You can also download it later from Leave (VL).', ok: 'Download the form' }).then(function (r) { if (r) vlPdf(l); });
+        if (l) confirmDialog({ title: 'Request saved: now file it in Sprout', message: 'Your team lead will see this request here. You also need to file the same leave in Sprout and attach the Time Off Request PDF. Download it now, then attach it to your leave application in Sprout. (You can download it again any time from Leave.)', ok: 'Download the form' }).then(function (r) { if (r) vlPdf(l); });
       }, function (e) { busy(btn, false); if (!showFieldErrors(m, e, 'vl-e-')) writeError(e); });
     };
   };
@@ -2484,7 +2486,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
       '<div class="legend2"><span><i class="tile-day"></i>Day</span><span><i class="tile-mid"></i>Mid</span><span><i class="tile-night"></i>Night</span><span><i class="tile-off"></i>Rest day</span><span><i class="tile-leave"></i>Leave</span><span><i class="mc-req-k"></i>Leave requested</span></div></div>';
     var ags = scopedAgents();
     if (!ags.length) return bar + attn + '<section class="card">' + emptyState('No agents', isAdmin() ? 'Add agents in Settings → Agents.' : 'No agents are assigned to you yet.') + '</section>';
-    var groups = {}, order = []; ags.forEach(function (a) { var k = campName(a.CampaignID) + ' · ' + tlName(a.TeamLeadID); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(a); });
+    var groups = {}, order = []; ags.forEach(function (a) { var k = campName(a.CampaignID); if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(a); });
     var head = '<div class="sg2-row sg2-head"><span></span>' + dates.map(function (d) { return '<span class="sg2-d' + (d === S.today ? ' is-today' : '') + (/Sat|Sun/.test(wdShort(d)) ? ' is-we' : '') + '"><small>' + wdShort(d) + '</small><b>' + (+d.slice(8, 10)) + '</b></span>'; }).join('') + '</div>';
     var body = order.map(function (k) {
       var list = groups[k], sums = dates.map(function (d) { var on = 0, lv = 0; list.forEach(function (a) { var l = leaveOn(a.AgentID, d), x = dayOf(a.AgentID, d); if (l && l.Status === 'Approved') lv++; else if (x && x.Shift && !C.shiftInfo(x.Shift).off) on++; }); return on + (lv ? ' · ' + lv : ''); });
