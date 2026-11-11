@@ -683,6 +683,11 @@ body{font-family:var(--font)} .topbar h1{font-weight:800;letter-spacing:-.02em}
 :root[data-theme="dark"] .sg2-c.tile-off,:root[data-theme="dark"] .sg2-row.alt .sg2-c.tile-off{background:var(--surface);color:#7E8BA0}
 :root[data-theme="dark"] .gchip.g1,:root[data-theme="dark"] .card{border-color:var(--line)}
 :root[data-theme="dark"] .cal-ruled .mc.blank{background:var(--surface-2)}
+/* today: one continuous soft blue band down the whole column (drawn over the grid, so it is never broken) */
+:root{--today-band:rgba(47,111,235,.11);--today-edge:rgba(47,111,235,.35)} :root[data-theme="dark"]{--today-band:rgba(120,165,255,.16);--today-edge:rgba(120,165,255,.45)}
+.sg2{position:relative} .today-band{position:absolute;pointer-events:none;background:var(--today-band);border-left:1.5px solid var(--today-edge);border-right:1.5px solid var(--today-edge);border-radius:0 0 12px 12px;z-index:2}
+.sg2-c.is-today,.sg2-c.tile-off.is-today{box-shadow:none} .sg2-c.tile-off.is-today{box-shadow:inset 0 0 0 1px var(--line-2)} .sg2-c.is-today.mc-req{box-shadow:inset 0 0 0 1.5px var(--t-req)}
+.sg2-sum span.is-today{box-shadow:none;color:var(--today);font-weight:800}
 /* phones: agents get a bottom tab bar */
 .tabbar{display:none}
 @media (max-width:900px){
@@ -2238,7 +2243,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     if (keepId) { var el = document.getElementById(keepId); if (el) el.focus(); }
     if (isAgentRole() && S.mode !== 'demo' && S.picture && !S.photoSent && myAgent().AgentID && myAgent().PhotoUrl !== S.picture) { S.photoSent = true; Api.write('setMyPhoto', { url: S.picture }, 'Photo').then(function () { }, function () { }); }
     if ($('#live')) paintLive();
-    applyTheme(); paintReminder();
+    applyTheme(); paintReminder(); placeTodayBands();
     paintSync();
   }
   function greeting() { var m = nowPht(), first = (S.user.displayName || '').split(' ')[0]; return (m < 720 ? 'Good morning' : m < 1080 ? 'Good afternoon' : 'Good evening') + (first ? ', ' + first : ''); }
@@ -2794,6 +2799,18 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     w.document.open(); w.document.write(html); w.document.close();
   };
 
+  // today's column: one band from under the header pill to the bottom of the grid (re-measured after each render and on resize)
+  function placeTodayBands() {
+    $$('.sg2').forEach(function (g) {
+      var old = g.querySelector('.today-band'); if (old) old.remove();
+      var h = g.querySelector('.sg2-d.is-today'); if (!h) return;
+      var gr = g.getBoundingClientRect(), r = h.getBoundingClientRect(), b = document.createElement('div'); b.className = 'today-band';
+      b.style.left = (r.left - gr.left - 3) + 'px'; b.style.width = (r.width + 6) + 'px'; b.style.top = (r.bottom - gr.top + 2) + 'px'; b.style.height = Math.max(0, g.scrollHeight - (r.bottom - gr.top) - 6) + 'px';
+      g.appendChild(b);
+    });
+  }
+  window.addEventListener('resize', function () { clearTimeout(S.tbT); S.tbT = setTimeout(placeTodayBands, 120); });
+
   // ================= shared write helpers =================
   function busy(btn, on) { if (!btn) return; btn.disabled = on; if (on) { btn.dataset.label = btn.textContent; btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;margin-right:6px"></span>Saving…'; } else if (btn.dataset.label) btn.textContent = btn.dataset.label; }
   function writeError(e) {
@@ -2980,7 +2997,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     if (el.parentNode.querySelector('.menu')) { el.parentNode.querySelector('.menu').remove(); return; }
     var theme = document.documentElement.dataset.theme || 'system';
     dropMenu(el, '<div class="menu-h"><strong>' + esc(S.user.displayName) + '</strong><br>' + esc(S.user.email) + '<br>' + esc(S.user.roleLabel) + '</div>' +
-      '<button data-act="cycleTheme">Theme: ' + esc(theme) + '</button>' + (S.mode === 'demo' ? '<button data-act="signOut">Switch demo user</button>' : '') + '<button data-act="signOut">Sign out</button>');
+      (S.mode === 'demo' ? '<button data-act="signOut">Switch demo user</button>' : '') + '<button data-act="signOut">Sign out</button>');
   };
   ACT.cycleTheme = function () { return ACT.themeNext(); };
   ACT._oldCycleTheme = function () { var r = document.documentElement, n = { system: 'light', light: 'dark', dark: 'system' }[r.dataset.theme || 'system']; if (n === 'system') delete r.dataset.theme; else r.dataset.theme = n; lsSet('ags_theme', n); $$('.menu').forEach(function (m) { m.remove(); }); toast('Theme: ' + n + '.'); };
