@@ -652,6 +652,37 @@ body{font-family:var(--font)} .topbar h1{font-weight:800;letter-spacing:-.02em}
 .who{display:flex;align-items:center;gap:10px} .who .av{width:30px;height:30px;flex:none;border-radius:15px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800}
 .sprout-note{display:flex;flex-direction:column;gap:3px;padding:12px 14px;border-radius:12px;background:#FFF8EC;border:1px solid #F6DDB0;color:#5A3A00;font-size:13px} .sprout-note b{font-size:13.5px;color:#6B4200}
 .sprout-hint{align-self:center;color:#8A5300;font-weight:600}
+/* ---------- UI improvements ---------- */
+.info{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:700 11px var(--font);font-style:italic;cursor:help;vertical-align:middle;margin-left:4px;padding:0}
+.info:hover,.info:focus-visible{color:var(--accent);border-color:var(--accent)}
+.ph-tip{display:flex;align-items:center;min-height:36px}
+.tipcard{position:fixed;z-index:200;max-width:300px;background:#172033;color:#E8EDF5;border-radius:10px;padding:9px 12px;font-size:12.5px;line-height:1.45;box-shadow:0 8px 24px rgba(0,0,0,.25);pointer-events:none}
+.tipcard b{display:block;color:#fff;margin-bottom:2px} .tipcard div{color:#C9D3E3}
+.gtools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 4px} .gsearch{width:190px} .seg-sm{margin-bottom:0} .seg-sm button{padding:6px 10px;font-size:12px} .gdense{font-size:12.5px;color:var(--ink-2)}
+.team-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px} .team-top .tt{font-size:14px}
+.sg2-c.dim{opacity:.22;filter:grayscale(.6)}
+.sg2-sum span.under{color:#B42318;font-weight:800;background:#FDECEA;border-radius:6px} .sg2-sum span.under::after{content:" ▲";font-size:9px}
+.sg2.dense .sg2-row{padding:1px 4px} .sg2.dense .sg2-c,.sg2.dense .sg2-a{height:26px;font-size:11px} .sg2.dense .sg2-a .av{width:22px;height:22px;font-size:9px} .sg2.dense .sg2-a small{display:none} .sg2.dense .sg2-a b{font-size:12px}
+.reminder{display:flex;align-items:center;justify-content:center;gap:10px;margin:-4px 0 12px;padding:10px 14px;border-radius:12px;background:#FFF4D6;color:#5A3A00;border:1px solid #F3D98A;font-size:14px} .reminder[hidden]{display:none} .reminder span{color:#7A5200}
+.status-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ring{position:relative;width:44px;height:44px;flex:none} .ring svg{width:44px;height:44px;transform:rotate(-90deg)} .ring circle{fill:none;stroke-width:4} .ring-bg{stroke:var(--k-shift)} .ring-fg{stroke:var(--accent);stroke-linecap:round}
+.ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:800;color:var(--ink)}
+.theme-btn{font-size:17px;width:38px;height:38px}
+/* loading placeholders */
+.skel{display:flex;height:100vh;background:var(--bg)} .skel-side{width:232px;background:var(--navy-900);flex:none} .skel-main{flex:1;padding:28px 24px;display:flex;flex-direction:column;gap:10px}
+.skel-bar,.skel-row i,.skel-row b{background:linear-gradient(90deg,var(--surface-2) 0%,var(--line-2) 50%,var(--surface-2) 100%);background-size:200% 100%;animation:skel 1.2s linear infinite;border-radius:8px}
+.skel-bar{height:22px} .skel-bar.w40{width:40%;height:30px} .skel-bar.w70{width:70%;margin-bottom:12px} .skel-row{display:grid;grid-template-columns:200px repeat(14,1fr);gap:4px} .skel-row i,.skel-row b{height:30px;display:block}
+@keyframes skel{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skel-bar,.skel-row i,.skel-row b{animation:none}}
+/* dark mode: the newer pieces */
+:root[data-theme="dark"] .attn{background:#2b2312;border-color:#5a4520;color:#E9DCC0} :root[data-theme="dark"] .attn > b{color:#F2C97A}
+:root[data-theme="dark"] .sprout-note{background:#2b2312;border-color:#5a4520;color:#E9DCC0} :root[data-theme="dark"] .sprout-note b{color:#F2C97A} :root[data-theme="dark"] .sprout-hint{color:#F2C97A}
+:root[data-theme="dark"] .reminder{background:#2b2312;border-color:#5a4520;color:#F2DFA9} :root[data-theme="dark"] .reminder span{color:#E9CF8A}
+:root[data-theme="dark"] .sg2-sum span.under{background:#3a1d1a;color:#FF9C8F} :root[data-theme="dark"] .mc-over{background:#3a2a12}
+:root[data-theme="dark"] .ic-b{background:#3a3016;color:#F2C97A} :root[data-theme="dark"] .ic-bad{background:#3a1d1a;color:#FF9C8F}
+:root[data-theme="dark"] .sg2-c.tile-off,:root[data-theme="dark"] .sg2-row.alt .sg2-c.tile-off{background:var(--surface);color:#7E8BA0}
+:root[data-theme="dark"] .gchip.g1,:root[data-theme="dark"] .card{border-color:var(--line)}
+:root[data-theme="dark"] .cal-ruled .mc.blank{background:var(--surface-2)}
 /* phones: agents get a bottom tab bar */
 .tabbar{display:none}
 @media (max-width:900px){
@@ -776,7 +807,7 @@ var AGSCore = (function () {
   // ------------------------------------------------------------------ schema
   var META = ['IsSynthetic', 'CreatedAt', 'CreatedBy', 'UpdatedAt', 'UpdatedBy', 'RecordVersion', 'ArchivedAt', 'ArchivedBy'];
   var SCHEMA = {
-    Campaigns: ['CampaignID', 'Name', 'Status', 'Description'].concat(META),
+    Campaigns: ['CampaignID', 'Name', 'Status', 'Description', 'MinOnShift'].concat(META),
     TeamLeads: ['TeamLeadID', 'FullName', 'Email', 'CampaignIDs', 'Status'].concat(META),
     Agents: ['AgentID', 'EmployeeID', 'FullName', 'Email', 'CampaignID', 'TeamLeadID', 'Status', 'Notes', 'PhotoUrl'].concat(META),
     // one row per agent per scheduled day; break times are clock times (HH:MM, 24-hour)
@@ -843,7 +874,7 @@ var AGSCore = (function () {
   function E(o) { return { t: 'enum', o: o }; }
   var D = { t: 'date' }, B = { t: 'bool' }, ID = { t: 'id' }, IDS = { t: 'ids' }, J = { t: 'json' }, MON = { t: 'month' }, HM = { t: 'hm' };
   var FIELDS = {
-    campaigns: { Name: T(80), Status: E(LISTS.ActiveStatus), Description: T(1000) },
+    campaigns: { Name: T(80), Status: E(LISTS.ActiveStatus), Description: T(1000), MinOnShift: T(4) },
     teamLeads: { FullName: T(120), Email: T(200), CampaignIDs: IDS, Status: E(LISTS.ActiveStatus) },
     agents: { EmployeeID: T(50), FullName: T(120), Email: T(200), CampaignID: ID, TeamLeadID: ID, Status: E(LISTS.ActiveStatus), Notes: T(1000), PhotoUrl: T(600) },
     days: { AgentID: ID, Date: D, Shift: T(40), Break1: HM, Lunch: HM, Break2: HM, Notes: T(500) },
@@ -1102,6 +1133,11 @@ var AGSCore = (function () {
     // leave counts per campaign and day (no names) so everyone can see which days are already full
     out.leaveLoad = {}; ctx.repo.all('leaves').forEach(function (r) { if (!activeLeave(r) || !(ctx.scope().all || ctx.scope().camps[r.CampaignID])) return; leaveDates(r.Dates).forEach(function (d) { var k = r.CampaignID + '|' + d; out.leaveLoad[k] = (out.leaveLoad[k] || 0) + 1; }); });
     out.days = dayWindow(ctx, w.from, w.to); out.window = w;
+    // campaign-wide "on shift" counts per day (not on approved leave), so coverage targets can be checked by team leads
+    if (!isAgentRole(ctx.user)) {
+      var offLv = {}; ctx.repo.all('leaves').forEach(function (l) { if (live(l) && l.Status === 'Approved') leaveDates(l.Dates).forEach(function (d) { offLv[l.AgentID + '|' + d] = 1; }); });
+      out.coverage = {}; ctx.repo.all('days').forEach(function (d) { if (!live(d) || d.Date < w.from || d.Date > w.to || offLv[d.AgentID + '|' + d.Date] || !(ctx.scope().all || ctx.scope().camps[d.CampaignID])) return; var si = shiftInfo(d.Shift); if (!si.valid || si.off || si.blank) return; var k = d.CampaignID + '|' + d.Date; out.coverage[k] = (out.coverage[k] || 0) + 1; });
+    }
     if (isAgentRole(ctx.user)) { var tv = teamView(ctx, w.from, w.to); out.teamDays = tv.days; out.roster = tv.roster; out.teamLeave = tv.leave; out.campaigns = tv.campaigns; out.teamLeads = tv.teamLeads; }
     out.users = isAdmin(ctx.user) ? ctx.repo.all('users') : ctx.repo.all('users').filter(function (r) { return s(r.Email).toLowerCase() === ctx.user.email; });
     out.settings = ctx.settings; out.user = publicUser(ctx.user); out.serverTime = ctx.now; out.today = ctx.today; out.coreVersion = CORE_VERSION;
@@ -1299,7 +1335,7 @@ var AGSCore = (function () {
   }
   function uniqueAmong(ctx, entity, field, value, selfId) { var def = ENTITIES[entity], v = s(value).toLowerCase(); return !ctx.list(entity, function (r) { return r[def.id] !== selfId && s(r[field]).toLowerCase() === v; }).length; }
   H.saveCampaign = { write: true, admin: true, fn: function (ctx, p) {
-    saveEntity(ctx, 'campaigns', p, function (m, e, ex, f) { if (!m.Status) m.Status = f.Status = 'Active'; requireFields(e, m, ['Name'], ''); if (m.Name && !uniqueAmong(ctx, 'campaigns', 'Name', m.Name, ex && ex.CampaignID)) e.Name = 'Another campaign already uses this name.'; });
+    saveEntity(ctx, 'campaigns', p, function (m, e, ex, f) { if (!m.Status) m.Status = f.Status = 'Active'; requireFields(e, m, ['Name'], ''); if (s(m.MinOnShift) && !/^\d{1,3}$/.test(s(m.MinOnShift))) e.MinOnShift = 'Enter a whole number (or leave empty for no target).'; if (m.Name && !uniqueAmong(ctx, 'campaigns', 'Name', m.Name, ex && ex.CampaignID)) e.Name = 'Another campaign already uses this name.'; });
   } };
   H.saveTeamLead = { write: true, admin: true, fn: function (ctx, p) {
     saveEntity(ctx, 'teamLeads', p, function (m, e, ex, f) { if (!m.Status) m.Status = f.Status = 'Active'; requireFields(e, m, ['FullName'], ''); if (m.Email && !isEmail(m.Email)) e.Email = 'Enter a valid email address.'; });
@@ -1449,7 +1485,7 @@ var AGSCore = (function () {
     U('celeste.navarro@example.com', 'Celeste Navarro', 'ADMIN');
     U(tls[0].Email, 'Ben Ortega', 'TEAM_LEAD', { TeamLeadID: tls[0].TeamLeadID }); U(tls[2].Email, 'Rina Santos', 'TEAM_LEAD', { TeamLeadID: tls[2].TeamLeadID });
     U(D.agents[0].Email, D.agents[0].FullName.split(', ').reverse().join(' '), 'AGENT', { AgentID: D.agents[0].AgentID }); U(D.agents[8].Email, D.agents[8].FullName.split(', ').reverse().join(' '), 'AGENT', { AgentID: D.agents[8].AgentID });
-    D.campaigns.forEach(function (c) { delete c._shifts; }); D.teamLeads.forEach(function (t) { delete t._camp; }); D.agents.forEach(function (a) { delete a._shift; delete a._rest; });
+    D.campaigns.forEach(function (c) { delete c._shifts; c.MinOnShift = { Legacy: '6', Banyan: '4', Takahami: '4' }[c.Name] || ''; }); D.teamLeads.forEach(function (t) { delete t._camp; }); D.agents.forEach(function (a) { delete a._shift; delete a._rest; });
     // a few notifications for the demo agent, and the last sheet sync with two problems
     var me = D.agents[0], tl0 = tlName[me.TeamLeadID], nAt = function (k) { return addDays(today, k) + 'T03:00:00.000Z'; };
     [['leave-approved', 'Leave approved', 'Your VL on ' + dayLabel(D.leaves[0].Dates.split(',')[0]) + ' was approved by ' + tl0 + '. The form is ready to download.', 'FALSE', 0],
@@ -1610,7 +1646,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     S.today = d.today || todayTz();
     S.lastLoad = Date.now();
     S.data.leaveLoad = d.leaveLoad || {}; S.data.window = d.window || null;
-    S.data.teamDays = d.teamDays || []; S.data.roster = d.roster || []; S.data.teamLeave = d.teamLeave || [];
+    S.data.teamDays = d.teamDays || []; S.data.roster = d.roster || []; S.data.teamLeave = d.teamLeave || []; S.data.coverage = d.coverage || {};
     if (!S.g.month) S.g.month = S.today.slice(0, 7);
     reindex();
   }
@@ -2050,7 +2086,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   function startServer(mode) {
     if (mode === 'demo') S.transport = S.demoT; else if (mode === 'http') S.transport = new HttpTransport(); else S.transport = new GasTransport();
     S.mode = mode;
-    $('#app').innerHTML = '<div class="loading" role="status"><span class="spinner"></span>Loading schedules…</div>';
+    $('#app').innerHTML = '<div class="skel" role="status" aria-label="Loading schedules"><div class="skel-side"></div><div class="skel-main"><div class="skel-bar w40"></div><div class="skel-bar w70"></div>' + new Array(9).join('<div class="skel-row"><i></i>' + new Array(15).join('<b></b>') + '</div>') + '</div></div>';
     callWithRetry('bootstrap', {}, 3).then(function (d) {
       setData(d);
       S.sync.pending = lsGet(pendKey(), []) || [];
@@ -2123,7 +2159,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     "Lajo, Ella Mae": "18mpAaayLUqGVVFRxJNL0m1758KmbD2_L",
     "Aban, Ma Melanie": "1PoMv9DLMKMmQOKtViCjwC1WGTkBtYqUh",
     "Villarta, Remington": "1hYaQZXTDBvad10bskgII8Zcr8K8Ve30s",
-    "Lumactod, Nicole": "1pfZJOfGWRlsoDcaGn9i1kOmvvr6N-yVo",
+    "Lumactod, Nikki": "1pfZJOfGWRlsoDcaGn9i1kOmvvr6N-yVo",
     "Dujale, John Vincent": "1pZPgL6iVxM3ESm-Qgn7HlydSF8VNXG61",
     "Navarro, Stephanie": "1qj57VqzTh9eEDx1BCn_JJdwFz1gFbp4u",
     "Lopez, Maria Nelia": "1wbfqhNlp7QrtFacooSH5ID0smP_i_Oyr",
@@ -2171,9 +2207,9 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
       (staff ? '<label class="sr-only" for="g-camp">Campaign</label><select id="g-camp" class="input input-sm" data-change="gCamp">' + campOpts(S.g.campaignId, 'All campaigns') + '</select>' +
         '<label class="sr-only" for="g-month">Month</label><select id="g-month" class="input input-sm" style="min-width:150px" data-change="gMonth">' + monthOptions() + '</select>'
         : '<button class="bell" id="bell" data-act="nav" data-page="notifs" aria-label="Notifications">' + icon('bell') + '<span id="bell-n" hidden></span></button>') +
-      '<button class="sync" id="sync-pill" data-act="openSyncPanel" data-state="connected"><i aria-hidden="true"></i><span>Connected</span></button>' +
+      '<button class="icon-btn theme-btn" id="theme-btn" data-act="themeNext" aria-label="Theme">☀</button><button class="sync" id="sync-pill" data-act="openSyncPanel" data-state="connected"><i aria-hidden="true"></i><span>Connected</span></button>' +
       '<div class="rel"><button class="user-chip" data-act="toggleUser" aria-haspopup="true"><span class="avatar" aria-hidden="true">' + esc(initials(u.displayName)) + (myPhoto() ? '<img src="' + esc(myPhoto()) + '" alt="" referrerpolicy="no-referrer" onerror="this.remove()">' : '') + '</span><span class="u-name">' + esc(u.displayName) + '</span></button></div>' +
-      '</header><main id="main" class="content" tabindex="-1"><div class="content-inner" id="page"></div></main>' +
+      '</header><main id="main" class="content" tabindex="-1"><div class="reminder" id="reminder" role="status" hidden></div><div class="content-inner" id="page"></div></main>' +
       (staff ? '' : '<nav class="tabbar" id="tabbar" aria-label="Main"></nav>') + '</div></div>';
     paintSync();
     if (S.liveTimer) clearInterval(S.liveTimer); S.liveTimer = setInterval(function () { if (S.user && ($('#live') || $('.live-box'))) paintLive(); if (S.user && S.page === 'today' && $('#page')) render(); }, 60000);
@@ -2202,6 +2238,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     if (keepId) { var el = document.getElementById(keepId); if (el) el.focus(); }
     if (isAgentRole() && S.mode !== 'demo' && S.picture && !S.photoSent && myAgent().AgentID && myAgent().PhotoUrl !== S.picture) { S.photoSent = true; Api.write('setMyPhoto', { url: S.picture }, 'Photo').then(function () { }, function () { }); }
     if ($('#live')) paintLive();
+    applyTheme(); paintReminder();
     paintSync();
   }
   function greeting() { var m = nowPht(), first = (S.user.displayName || '').split(' ')[0]; return (m < 720 ? 'Good morning' : m < 1080 ? 'Good afternoon' : 'Good evening') + (first ? ', ' + first : ''); }
@@ -2306,6 +2343,9 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   }
   function iconCup(cls) { return '<span class="ic ' + cls + '" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M17 9h1.5a2.5 2.5 0 0 1 0 5H17"/></svg></span>'; }
   function iconFork() { return '<span class="ic ic-l" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 3v8M5 3v4a2 2 0 0 0 4 0V3M7 11v10"/><path d="M17 3c-1.7 0-3 2-3 5s1.3 4 3 4v9"/></svg></span>'; }
+  // how far into the shift we are, as a small ring with the percentage
+  function ring(d) { var si = C.shiftInfo(d.Shift), r = relNow(d); if (r === null || r < 0 || r >= si.length) return ''; var pc = Math.round(r / si.length * 100), C2 = 2 * Math.PI * 15;
+    return '<span class="ring" title="' + pc + '% of the shift done" aria-label="' + pc + '% of the shift done"><svg viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="15" class="ring-bg"/><circle cx="18" cy="18" r="15" class="ring-fg" stroke-dasharray="' + (C2 * pc / 100).toFixed(1) + ' ' + C2.toFixed(1) + '"/></svg><b>' + pc + '%</b></span>'; }
   PAGES.today = function () {
     var a = myAgent(), d = currentDay(a.AgentID), si = d ? C.shiftInfo(d.Shift) : null, lvToday = leaveOn(a.AgentID, S.today), html = '';
     if (lvToday && lvToday.Status === 'Approved') html += '<section class="hero"><div class="hero-h"><span class="eyebrow">Today</span><span class="chip chip-leave">On leave</span></div><div class="hero-big">' + esc(lvToday.LeaveType) + '</div><div class="muted">' + esc(lvToday.Portion) + '</div></section>';
@@ -2314,7 +2354,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     else {
       var tone = shiftTone(d.Shift), rows = [[d.Break1, '1st break', '15 minutes', 15], [d.Lunch, 'Lunch', '1 hour', 60], [d.Break2, 'Last break', '15 minutes', 15]].filter(function (x) { return x[0]; });
       html += '<section class="hero"><div class="hero-h"><span class="eyebrow">' + (d.Date === S.today ? 'Today\'s shift' : 'Current shift (started ' + esc(dLabel(d.Date)) + ')') + '</span><span class="chip chip-' + tone + '">' + esc(TONE_NAME[tone] + ' · ' + campName(a.CampaignID)) + '</span></div>' +
-        '<div class="hero-big">' + esc(C.clock(si.start)) + ' <span>to ' + esc(C.clock(si.end)) + ' PHT</span></div><div class="est-line">' + esc(shiftEst(d.Shift)) + ' for the client</div><div class="status-line"><i></i>' + esc(statusLine(d)) + '</div>' + timeline(d, relNow(d)) +
+        '<div class="hero-big">' + esc(C.clock(si.start)) + ' <span>to ' + esc(C.clock(si.end)) + ' PHT</span></div><div class="est-line">' + esc(shiftEst(d.Shift)) + ' for the client</div><div class="status-row"><div class="status-line"><i></i>' + esc(statusLine(d)) + '</div>' + ring(d) + '</div>' + timeline(d, relNow(d)) +
         '<div class="tl-scale">' + [0, 0.25, 0.5, 0.75, 1].map(function (f2) { return '<span>' + esc(C.clock(si.start + Math.round(si.length * f2 / 15) * 15).replace(':00', '')) + '</span>'; }).join('') + '</div>' +
         '<ul class="brk">' + rows.map(function (x) { return '<li>' + (x[3] === 60 ? iconFork() : iconCup('ic-b')) + '<span><b>' + x[1] + '</b><small>' + x[2] + '</small></span><strong>' + esc(C.clock(x[0]) + (x[3] === 60 ? ' – ' + C.clock(C.parseTime(x[0]) + 60) : '')) + '</strong></li>'; }).join('') + '</ul></section>';
     }
@@ -2412,7 +2452,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     }
     var pend = list.filter(function (l) { return l.Status === 'Pending'; });
     var tabs = [['pending', 'To approve · ' + pend.length], ['all', 'All requests'], ['cal', 'Calendar']];
-    var head = '<div class="page-head"><div><p>Approve or decline your team\'s leave. Agents are told in the app and can download the Time Off Request form for Sprout.</p></div><div class="actions"><button class="btn btn-primary" data-act="requestVl">Request for an agent</button></div></div>' +
+    var head = '<div class="page-head"><div class="ph-tip">' + infoTip('Approve or decline your team\'s leave. Agents are told in the app, and file the leave in Sprout with the Time Off Request PDF.') + '</div><div class="actions"><button class="btn btn-primary" data-act="requestVl">Request for an agent</button></div></div>' +
       '<div class="seg" role="group" aria-label="View">' + tabs.map(function (t) { return '<button data-act="leaveTab" data-v="' + t[0] + '" aria-pressed="' + (f.tab === t[0]) + '">' + esc(t[1]) + '</button>'; }).join('') + '</div>';
     if (f.tab === 'cal') return head + staffCalendar(m, list);
     var rows = (f.tab === 'pending' ? pend : list).slice().sort(function (a, b) { return a.Dates < b.Dates ? (f.tab === 'pending' ? -1 : 1) : (f.tab === 'pending' ? 1 : -1); });
@@ -2555,7 +2595,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   ACT.editDay = function (el) {
     var a = ag(el.dataset.a), d = el.dataset.d, x = dayOf(a.AgentID, d), lv = leaveOn(a.AgentID, d), si = x ? C.shiftInfo(x.Shift) : null, working = x && si.valid && !si.off && !si.blank;
     var m = openModal({ title: esc(a.FullName), sub: esc(fmtLong(d) + ' · ' + campName(a.CampaignID)),
-      body: (lv ? '<div class="note" style="margin-bottom:10px">' + esc((lv.Status === 'Approved' ? 'Approved leave: ' : 'Leave requested: ') + lv.LeaveType + ' (' + lv.Portion + ')') + '</div>' : '') +
+      body: (lv ? '<div class="note" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="flex:1">' + esc((lv.Status === 'Approved' ? 'Approved leave: ' : 'Leave requested: ') + lv.LeaveType + ' (' + lv.Portion + ')' + (lv.Reason ? ' · ' + lv.Reason : '')) + '</span>' + (lv.Status === 'Pending' && cap('approveLeave') ? '<button class="btn btn-sm btn-primary" data-act="vlDecide" data-v="Approved" data-id="' + esc(lv.LeaveID) + '">Approve</button><button class="btn btn-sm" data-act="vlDecide" data-v="Declined" data-id="' + esc(lv.LeaveID) + '">Decline</button>' : '') + '</div>' : '') +
         '<div class="day-shift"><span class="chip chip-' + (x && x.Shift ? shiftTone(x.Shift) || 'off' : 'off') + '">' + esc(x && x.Shift ? (si.off ? 'Rest day' : TONE_NAME[shiftTone(x.Shift)]) : 'No shift') + '</span><b>' + esc(x && x.Shift ? (si.off ? 'Rest day' : shiftText(x.Shift) + ' PHT') : 'Not scheduled') + '</b>' + (x && x.Shift && !si.off ? '<small class="est-line">' + esc(shiftEst(x.Shift)) + '</small>' : '') + '<small class="muted">To change the shift, edit the schedule sheet' + (S.settings.GridUrl ? ' (<a href="' + esc(S.settings.GridUrl) + '" target="_blank" rel="noopener">open</a>)' : '') + '.</small></div>' +
         (working ? timeline(x, null) + '<div class="fgrid" style="margin-top:12px"><div><label class="lbl" for="ed-b1">1st break (15 min)</label><input id="ed-b1" class="input" type="time" step="900" value="' + esc(x.Break1) + '"></div><div><label class="lbl" for="ed-l">Lunch (1 hour)</label><input id="ed-l" class="input" type="time" step="900" value="' + esc(x.Lunch) + '"></div>' +
           '<div><label class="lbl" for="ed-b2">Last break (15 min)</label><input id="ed-b2" class="input" type="time" step="900" value="' + esc(x.Break2) + '"></div><div style="align-self:end"><button class="btn btn-sm" data-act="edSuggest">Suggest by the rules</button></div><div class="span2 small" id="ed-w"></div>' +
@@ -2578,7 +2618,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var f = pf('breaks', { date: S.today }), ro = isAgentRole(); ensureMonth(f.date.slice(0, 7));
     var rows = peopleInView().map(function (a) { return { a: a, d: dayAny(a.AgentID, f.date) }; }).filter(function (x) { return x.d && x.d.Shift && !C.shiftInfo(x.d.Shift).off && !onLeaveAny(x.a.AgentID, f.date); })
       .sort(function (p, q) { var x = C.shiftInfo(p.d.Shift), y = C.shiftInfo(q.d.Shift); return x.start - y.start || (p.a.FullName < q.a.FullName ? -1 : 1); });
-    var head = '<div class="page-head"><div style="flex:1;min-width:280px"><p>Each agent\'s 1st break (15 min), lunch (1 hour) and last break (15 min). Rules: 1st break 1–2 hours into the shift, lunch within the first 4 hours, last break 1–2 hours after lunch.</p></div><div class="actions">' +
+    var head = '<div class="page-head"><div class="ph-tip" style="flex:1">' + infoTip('Each agent\'s 1st break (15 min), lunch (1 hour) and last break (15 min). Rules: 1st break 1–2 hours into the shift, lunch within the first 4 hours, last break 1–2 hours after lunch.') + '</div><div class="actions">' +
       '<button class="btn btn-sm" data-act="brDay" data-d="-1" aria-label="Previous day">‹</button><input type="date" class="input input-sm" style="width:auto" id="br-date" data-change="brDate" value="' + esc(f.date) + '"><button class="btn btn-sm" data-act="brDay" data-d="1" aria-label="Next day">›</button>' +
       (ro ? '<label class="sr-only" for="br-c">Campaign</label><select id="br-c" class="input input-sm" style="width:auto" data-change="teamCamp">' + opts([['', 'All campaigns']].concat(S.data.campaigns.filter(C.live).map(function (c) { return [c.CampaignID, c.Name]; })), viewCampaign()) + '</select>' : rows.length ? '<button class="btn" data-act="brArrange">Arrange automatically</button><button class="btn btn-primary" data-act="brSave">Save changes</button>' : '') + '</div></div>' +
       (ro ? '<div class="live live-box live-inline"></div>' : '');
@@ -2615,6 +2655,143 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var list = Object.keys(items).map(function (k) { return items[k]; });
     if (!list.length) { toast('No changes to save.', 'warn'); return; }
     busy(el, true); Api.write('saveDays', { days: list }, 'Breaks').then(function (res) { busy(el, false); render(); toast(plural(list.length, 'agent') + ' saved' + (res.warnings && res.warnings.length ? ' (' + plural(res.warnings.length, 'warning') + ')' : '') + '.', res.warnings && res.warnings.length ? 'warn' : 'ok'); }, function (e) { busy(el, false); writeError(e); });
+  };
+  // ================= UI improvements: grid tools, hover cards, coverage, reminders, theme, print =================
+  // ---------- hover cards (any element with data-tip) and ⓘ info buttons ----------
+  function infoTip(text) { return '<button class="info" type="button" data-tip="' + esc(text) + '" aria-label="' + esc(text) + '">i</button>'; }
+  (function () {
+    var tip = null;
+    function hide() { if (tip) { tip.remove(); tip = null; } }
+    function show(el) {
+      hide(); var text = el.getAttribute('data-tip'); if (!text) return;
+      tip = document.createElement('div'); tip.className = 'tipcard'; tip.setAttribute('role', 'tooltip');
+      tip.innerHTML = text.split('\n').map(function (l, i) { return i ? '<div>' + esc(l) + '</div>' : '<b>' + esc(l) + '</b>'; }).join('');
+      document.body.appendChild(tip);
+      var r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight, x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8), y = r.top - h - 8;
+      if (y < 8) y = r.bottom + 8; tip.style.left = x + 'px'; tip.style.top = y + 'px';
+    }
+    document.addEventListener('mouseover', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el); else hide(); });
+    document.addEventListener('focusin', function (e) { var el = e.target.closest && e.target.closest('[data-tip]'); if (el) show(el); });
+    document.addEventListener('focusout', hide); document.addEventListener('scroll', hide, true); document.addEventListener('click', function (e) { if (!(e.target.closest && e.target.closest('.info'))) hide(); });
+  })();
+
+  // ---------- theme: Auto (dark at night in Manila, 6 PM – 6 AM PHT), Light, Dark ----------
+  function themeMode() { return lsGet('ags_theme_mode', 'auto'); }
+  function applyTheme() {
+    var m = themeMode(), h = Math.floor(C.phtFromEst(nowMinutes()) / 60), dark = m === 'dark' || (m === 'auto' && (h >= 18 || h < 6));
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    var b = $('#theme-btn'); if (b) { b.innerHTML = dark ? '☾' : '☀'; b.title = 'Theme: ' + ({ auto: 'Auto (dark at night in Manila)', light: 'Light', dark: 'Dark' })[m] + '. Click to change.'; b.setAttribute('aria-label', b.title); }
+  }
+  ACT.themeNext = function () { var n = { auto: 'light', light: 'dark', dark: 'auto' }[themeMode()]; lsSet('ags_theme_mode', n); applyTheme(); toast('Theme: ' + ({ auto: 'Auto (dark at night in Manila)', light: 'Light', dark: 'Dark' })[n] + '.', 'ok'); };
+  setInterval(function () { if (S.settings) applyTheme(); }, 60000);
+
+  // ---------- break reminder (agents, while the app is open) ----------
+  function myStatus() { var a = myAgent(); if (!a.AgentID) return null; return C.statusAt([-1, 0, 1].map(function (k) { return dayOf(a.AgentID, C.addDays(S.today, k)); }), S.today, nowMinutes()); }
+  function paintReminder() {
+    var host = $('#reminder'); if (!host) return; var st = isAgentRole() ? myStatus() : null, html = '';
+    if (st && st.s === 'shift' && st.next && st.next.inMin <= 5) html = '<b>' + esc(st.next.name) + ' in ' + st.next.inMin + ' min</b><span>' + esc(C.clock(st.next.at)) + ' PHT</span>';
+    else if (st && (st.s === 'break' || st.s === 'lunch')) html = '<b>' + (st.s === 'lunch' ? 'Lunch' : 'Break') + ' now</b><span>back at ' + esc(C.clock(st.back)) + ' PHT</span>';
+    host.innerHTML = html; host.hidden = !html;
+  }
+  setInterval(function () { if (S.user) paintReminder(); }, 30000);
+
+  // ---------- the grid (Schedules for team leads, Team schedule for agents) ----------
+  function gridState() { return pf('grid', { range: '2w', dense: false, q: '', shift: 'all' }); }
+  function gridDates(start) {
+    var g = gridState(), out = [];
+    if (g.range === 'month') { var m = start.slice(0, 7); for (var d = m + '-01'; d <= monthEnd(m); d = C.addDays(d, 1)) out.push(d); return out; }
+    for (var i = 0; i < (g.range === '1w' ? 7 : 14); i++) out.push(C.addDays(start, i)); return out;
+  }
+  function gridToolbar(prefix, label) {
+    var g = gridState();
+    return '<div class="gtools"><div class="seg-nav"><button class="btn-sq" data-act="' + prefix + 'Go" data-d="-1" aria-label="Previous">‹</button><b>' + esc(label) + '</b><button class="btn-sq" data-act="' + prefix + 'Go" data-d="1" aria-label="Next">›</button><button class="link" data-act="' + prefix + 'Go" data-d="0">Today</button></div>' +
+      '<input class="input input-sm gsearch" id="g-q" placeholder="Search a name" value="' + esc(g.q) + '" data-input="gridQ" aria-label="Search a name">' +
+      '<div class="seg seg-sm" role="group" aria-label="Show">' + [['all', 'All'], ['night', 'Night'], ['day', 'Day'], ['mid', 'Mid'], ['off', 'Rest day'], ['leave', 'Leave']].map(function (x) { return '<button data-act="gridShift" data-v="' + x[0] + '" aria-pressed="' + (g.shift === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="seg seg-sm" role="group" aria-label="Range">' + [['1w', '1 week'], ['2w', '2 weeks'], ['month', 'Month']].map(function (x) { return '<button data-act="gridRange" data-v="' + x[0] + '" aria-pressed="' + (g.range === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>' +
+      '<label class="check gdense"><input type="checkbox" data-change="gridDense"' + (g.dense ? ' checked' : '') + '> Compact</label></div>';
+  }
+  ACT.gridShift = function (el) { gridState().shift = el.dataset.v; render(); };
+  ACT.gridRange = function (el) { gridState().range = el.dataset.v; render(); };
+  CHG.gridDense = function (el) { gridState().dense = el.checked; render(); };
+  INP.gridQ = function (el) { gridState().q = el.value; clearTimeout(S.gqT); S.gqT = setTimeout(function () { render(); var i = $('#g-q'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 200); };
+  function cellTip(name, d, x, lv) {
+    var lines = [name + ' · ' + dLabel(d)];
+    if (lv) lines.push((lv.Status === 'Approved' ? 'On leave' : 'Leave requested') + (lv.LeaveType ? ': ' + lv.LeaveType : '') + (lv.Portion && lv.Portion !== 'Full day' ? ' (' + lv.Portion + ')' : ''));
+    if (x && x.Shift) { var si = C.shiftInfo(x.Shift); if (si.off) lines.push('Rest day'); else { lines.push(shiftText(x.Shift) + ' PHT'); lines.push(shiftEst(x.Shift)); if (breakLine(x)) lines.push(breakLine(x)); } }
+    else if (!lv) lines.push('No shift');
+    return lines.join('\n');
+  }
+  // people: [{AgentID, FullName, CampaignID, …}], get(agentId, date) → day, leave(agentId, date) → leave or null, staff: team lead view
+  function renderGrid(opts) {
+    var g = gridState(), dates = opts.dates, q = g.q.trim().toLowerCase(), people = opts.people.filter(function (p) { return !q || p.FullName.toLowerCase().indexOf(q) >= 0; });
+    var minW = g.range === 'month' ? 46 : 58, cols = 'grid-template-columns:' + (g.dense ? 190 : 220) + 'px repeat(' + dates.length + ',minmax(' + minW + 'px,1fr))', width = 'min-width:' + ((g.dense ? 190 : 220) + dates.length * minW + 24) + 'px';
+    var match = function (tn) { return g.shift === 'all' || g.shift === tn; };
+    var head = '<div class="sg2-row sg2-head" style="' + cols + '"><span></span>' + dates.map(function (d) { return '<span class="sg2-d' + (d === S.today ? ' is-today' : '') + (/Sat|Sun/.test(wdShort(d)) ? ' is-we' : '') + '"><small>' + wdShort(d) + '</small><b>' + (+d.slice(8, 10)) + '</b></span>'; }).join('') + '</div>';
+    if (!people.length) return '<section class="card">' + emptyState(q ? 'Nobody matches "' + g.q + '"' : 'No agents', '') + '</section>';
+    var groups = {}, order = []; people.forEach(function (p) { var k = p.CampaignID; if (!groups[k]) { groups[k] = []; order.push(k); } groups[k].push(p); });
+    var body = order.map(function (cid) {
+      var list = groups[cid], camp = S.idx.camps[cid] || (S.data.campaigns || []).filter(function (c) { return c.CampaignID === cid; })[0] || {}, target = parseInt(camp.MinOnShift, 10) || 0;
+      var rows = list.map(function (p, ri) {
+        var mine = opts.me && p.AgentID === opts.me;
+        return '<div class="sg2-row' + (mine ? ' is-me' : '') + (ri % 2 ? ' alt' : '') + '" style="' + cols + '"><span class="sg2-a">' + avatar(p, 'av') + '<span><b>' + esc(p.FullName) + (mine ? ' (you)' : '') + '</b>' + (opts.staff && p.EmployeeID ? '<small>' + esc(p.EmployeeID) + '</small>' : '') + '</span></span>' + dates.map(function (d) {
+          var x = opts.get(p.AgentID, d), lv = opts.leave(p.AgentID, d), ok = lv && lv.Status === 'Approved', tn = ok ? 'leave' : x && x.Shift ? shiftTone(x.Shift) : 'none', warn = opts.staff && x && C.checkBreaks(x).length;
+          var label = ok ? 'VL' : x && x.Shift ? (g.range === 'month' || g.dense ? shiftShort(x.Shift).split('–')[0] : shiftShort(x.Shift)) : '';
+          return '<button class="sg2-c tile-' + tn + (lv && !ok ? ' mc-req' : '') + (d === S.today ? ' is-today' : '') + (/Sat|Sun/.test(wdShort(d)) ? ' is-we' : '') + (match(lv && !ok ? 'leave' : tn) ? '' : ' dim') + '" data-act="' + opts.act + '" data-a="' + esc(p.AgentID) + '" data-d="' + d + '" data-tip="' + esc(cellTip(p.FullName, d, x, lv)) + '" aria-label="' + esc(cellTip(p.FullName, d, x, lv).replace(/\n/g, '. ')) + '">' + esc(label) + (warn ? '<i class="sg2-w">!</i>' : '') + '</button>';
+        }).join('') + '</div>';
+      }).join('');
+      var sums = opts.staff ? '<div class="sg2-row sg2-sum" style="' + cols + '"><span>On shift · on leave' + (target ? ' · target ' + target : '') + '</span>' + dates.map(function (d) {
+        var on = 0, lv = 0; list.forEach(function (p) { var l = opts.leave(p.AgentID, d), x = opts.get(p.AgentID, d); if (l && l.Status === 'Approved') lv++; else if (x && x.Shift && !C.shiftInfo(x.Shift).off) on++; });
+        var cov = (S.data.coverage || {})[cid + '|' + d], all = cov === undefined ? on : cov, under = target && all < target;
+        var tipTxt = dLabel(d) + '\n' + (cov !== undefined && cov !== on ? 'Campaign: ' + all + ' on shift · your view: ' + on : all + ' on shift') + (target ? '\nTarget ' + target + (under ? ' · short by ' + (target - all) : ' · met') : '');
+        return '<span class="' + (d === S.today ? 'is-today' : '') + (under ? ' under' : '') + '" data-tip="' + esc(tipTxt) + '">' + on + (lv ? ' · ' + lv : '') + '</span>';
+      }).join('') + '</div>' : '';
+      return '<div class="sg2-g"><div class="sg2-gh">' + esc(campName(cid)) + (target && opts.staff ? ' <small class="muted">· target ' + target + ' on shift per day</small>' : '') + '</div>' + rows + sums + '</div>';
+    }).join('');
+    return '<section class="card card-flush"><div class="sg2-wrap"><div class="sg2' + (g.dense ? ' dense' : '') + '" style="' + width + '">' + head + body + '</div></div></section>';
+  }
+  function legend() { return '<div class="legend2"><span><i class="tile-day"></i>Day</span><span><i class="tile-mid"></i>Mid</span><span><i class="tile-night"></i>Night</span><span><i class="tile-off"></i>Rest day</span><span><i class="tile-leave"></i>Leave</span><span><i class="mc-req-k"></i>Leave requested</span><span class="muted">Hover a day for the breaks and lunch.</span></div>'; }
+  function rangeLabel(dates) { return gridState().range === 'month' ? monthLabel(dates[0].slice(0, 7)) : dLabel(dates[0]) + ' – ' + dLabel(dates[dates.length - 1]); }
+  function stepStart(start, dir) { var g = gridState(); if (dir === 0) return g.range === 'month' ? S.today.slice(0, 7) + '-01' : mondayOf(S.today); if (g.range === 'month') return monthAdd(start.slice(0, 7), dir) + '-01'; return C.addDays(start, dir * (g.range === '1w' ? 7 : 14)); }
+  function normStart(start) { return gridState().range === 'month' ? start.slice(0, 7) + '-01' : mondayOf(start); }
+
+  // ---------- Schedules (team leads and Admins) ----------
+  PAGES.schedule = function () {
+    var f = pf('schedule', { start: mondayOf(S.today) }); f.start = normStart(f.start);
+    var dates = gridDates(f.start); ensureMonth(dates[0].slice(0, 7)); ensureMonth(dates[dates.length - 1].slice(0, 7));
+    var gs = gridSync(), url = S.settings.GridUrl, probs = gs ? (gs.problems || []) : [], warns = gs ? (gs.warnings || []) : [];
+    var bar = '<section class="card sync-bar"><span class="ic ic-leave" aria-hidden="true">' + icon('refresh') + '</span><span class="sb-t"><b>' + (gs ? 'Synced with the Google Sheet · ' + esc(agoText(gs.at)) : 'Not synced with a Google Sheet yet') + ' ' + infoTip('Shifts are edited in the schedule sheet (team leads and WFM only; agents never see it). Breaks and lunch are set here, by the rules. Dates and shift times are PHT; the highlighted day is today in EST.') + '</b></span>' +
+      (url ? '<a class="btn btn-outline" href="' + esc(url) + '" target="_blank" rel="noopener">Open the sheet</a>' : '') + '<button class="btn" data-act="printWeek">Print week</button><button class="btn btn-primary" data-act="syncNow">Sync now</button></section>';
+    var attn = probs.length || warns.length ? '<section class="attn"><b>' + plural(probs.length + warns.length, 'cell') + ' in the sheet need' + (probs.length + warns.length === 1 ? 's' : '') + ' attention</b><ul>' +
+      probs.concat(warns).slice(0, 8).map(function (x) { return '<li><b>' + esc((x.agent || '') + (x.date ? ' · ' + dLabel(x.date) : '')) + '</b> <span>' + esc(x.reason) + '</span> <small class="muted">' + esc((x.tab ? x.tab + ' · ' : '') + 'cell ' + x.cell) + '</small>' + (url ? ' <a href="' + esc(url) + '" target="_blank" rel="noopener">Show in sheet</a>' : '') + '</li>'; }).join('') + '</ul></section>' : '';
+    var ags = scopedAgents();
+    if (!ags.length) return bar + attn + '<section class="card">' + emptyState('No agents', isAdmin() ? 'Add agents in Settings → Agents.' : 'No agents are assigned to you yet.') + '</section>';
+    return bar + attn + gridToolbar('sch', rangeLabel(dates)) + legend() + renderGrid({ dates: dates, people: ags, staff: true, act: 'editDay', get: dayOf, leave: leaveOn });
+  };
+  ACT.schGo = function (el) { var f = S.f.schedule; f.start = stepStart(f.start, +el.dataset.d); var m2 = gridDates(f.start)[0].slice(0, 7); if (m2 >= monthAdd(S.today.slice(0, 7), -3) && m2 <= monthAdd(S.today.slice(0, 7), 3)) S.g.month = m2; render(); };
+
+  // ---------- Team schedule (agents, read-only) ----------
+  PAGES.team = function () {
+    var a = myAgent(), f = pf('team', { start: mondayOf(S.today), cid: a.CampaignID || '' }), idx = teamIndex(), off = {}; f.start = normStart(f.start);
+    (S.data.teamLeave || []).forEach(function (k) { off[k] = 1; });
+    var dates = gridDates(f.start); ensureMonth(dates[0].slice(0, 7)); ensureMonth(dates[dates.length - 1].slice(0, 7));
+    var camps = S.data.campaigns.filter(C.live), list = (S.data.roster || []).filter(function (r) { return !f.cid || r.CampaignID === f.cid; }).sort(function (p, q) { return (campName(p.CampaignID) + '|' + p.FullName) < (campName(q.CampaignID) + '|' + q.FullName) ? -1 : 1; });
+    var head = '<div class="team-top"><b class="tt">Published schedules ' + infoTip('Read-only. Hover or tap a day for the breaks and lunch. Dates and shift times are PHT; the highlighted day is today in EST.') + '</b><span style="flex:1"></span><button class="btn btn-soft" data-act="nav" data-page="breaks">Breaks and lunch</button><label class="sr-only" for="team-c">Campaign</label><select id="team-c" class="input input-sm" style="width:auto" data-change="teamCamp">' + opts([['', 'All campaigns']].concat(camps.map(function (c) { return [c.CampaignID, c.Name]; })), f.cid) + '</select></div>';
+    return '<div class="team-page">' + head + gridToolbar('team', rangeLabel(dates)) + legend() + renderGrid({ dates: dates, people: list, staff: false, me: a.AgentID, act: 'teamDay',
+      get: function (id, d) { return idx[id + '|' + d] || null; }, leave: function (id, d) { return off[id + '|' + d] ? { Status: 'Approved' } : (id === a.AgentID ? leaveOn(id, d) : null); } }) + '</div>';
+  };
+  ACT.teamGo = function (el) { var f = S.f.team; f.start = stepStart(f.start, +el.dataset.d); render(); };
+
+  // ---------- print a week (team leads): opens a clean page and the print dialog (print, or save as PDF) ----------
+  ACT.printWeek = function () {
+    var f = S.f.schedule || { start: mondayOf(S.today) }, start = gridState().range === 'month' ? mondayOf(S.today) : f.start, dates = []; for (var i = 0; i < 7; i++) dates.push(C.addDays(start, i));
+    var ags = scopedAgents(), groups = {}, order = []; ags.forEach(function (p) { if (!groups[p.CampaignID]) { groups[p.CampaignID] = []; order.push(p.CampaignID); } groups[p.CampaignID].push(p); });
+    var cell = function (p, d) { var lv = leaveOn(p.AgentID, d), x = dayOf(p.AgentID, d); if (lv && lv.Status === 'Approved') return '<td class="lv">VL</td>'; if (!x || !x.Shift) return '<td></td>'; var si = C.shiftInfo(x.Shift); return si.off ? '<td class="off">OFF</td>' : '<td><b>' + esc(shiftShort(x.Shift)) + '</b><small>' + esc([x.Break1, x.Lunch, x.Break2].map(function (t) { return t ? C.clock(t).replace(':00', '') : ''; }).filter(Boolean).join(' · ')) + '</small></td>'; };
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>Schedule ' + esc(dLabel(dates[0]) + ' – ' + dLabel(dates[6])) + '</title><style>body{font-family:Arial,Helvetica,sans-serif;color:#172033;margin:18px}h1{font-size:18px;margin:0 0 2px}p{margin:0 0 12px;color:#5F6B7E;font-size:12px}table{border-collapse:collapse;width:100%;margin-bottom:16px;font-size:11.5px}th,td{border:1px solid #D5DCE6;padding:5px 6px;text-align:center}th{background:#F1F4F9}td:first-child,th:first-child{text-align:left;white-space:nowrap}td small{display:block;color:#5F6B7E;font-size:9.5px}.off{color:#8A94A6}.lv{background:#DFF5EA;color:#176840;font-weight:bold}h2{font-size:14px;margin:12px 0 6px}@media print{body{margin:8mm}}</style></head><body>' +
+      '<h1>AGS Schedules · ' + esc(dLabel(dates[0]) + ' – ' + dLabel(dates[6]) + ' ' + dates[6].slice(0, 4)) + '</h1><p>Shift times PHT, with break · lunch · break. Printed ' + esc(fmtTs(new Date().toISOString())) + '.</p>' +
+      order.map(function (cid) { return '<h2>' + esc(campName(cid)) + '</h2><table><thead><tr><th>Agent</th>' + dates.map(function (d) { return '<th>' + esc(dLabel(d)) + '</th>'; }).join('') + '</tr></thead><tbody>' + groups[cid].map(function (p) { return '<tr><td>' + esc(p.FullName) + '</td>' + dates.map(function (d) { return cell(p, d); }).join('') + '</tr>'; }).join('') + '</tbody></table>'; }).join('') +
+      '<script>window.onload=function(){window.print()}<\/script></body></html>';
+    var w = window.open('', '_blank'); if (!w) { toast('Allow pop-ups for this site to print.', 'warn'); return; }
+    w.document.open(); w.document.write(html); w.document.close();
   };
 
   // ================= shared write helpers =================
@@ -2705,7 +2882,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   var SETTINGS = {
     campaigns: function () {
       return '<div class="page-head"><div><p>Campaigns group the agents and their schedules.</p></div><div class="actions"><button class="btn btn-primary" data-act="editCampaign">Add campaign</button></div></div><section class="panel">' +
-        tblS(['Campaign', 'Status', 'Team leads', 'Agents', ''], S.data.campaigns.filter(C.live).map(function (c) { return [{ html: '<b>' + esc(c.Name) + '</b>' }, c.Status, S.data.teamLeads.filter(function (t) { return C.live(t) && C.splitIds(t.CampaignIDs).indexOf(c.CampaignID) >= 0; }).map(function (t) { return tlName(t.TeamLeadID); }).join(', '), S.data.agents.filter(function (a) { return C.live(a) && a.CampaignID === c.CampaignID && a.Status !== 'Inactive'; }).length, editBtn('editCampaign', c.CampaignID)]; })) + '</section>';
+        tblS(['Campaign', 'Status', 'Team leads', 'Agents', 'Min. on shift', ''], S.data.campaigns.filter(C.live).map(function (c) { return [{ html: '<b>' + esc(c.Name) + '</b>' }, c.Status, S.data.teamLeads.filter(function (t) { return C.live(t) && C.splitIds(t.CampaignIDs).indexOf(c.CampaignID) >= 0; }).map(function (t) { return tlName(t.TeamLeadID); }).join(', '), S.data.agents.filter(function (a) { return C.live(a) && a.CampaignID === c.CampaignID && a.Status !== 'Inactive'; }).length, c.MinOnShift || '—', editBtn('editCampaign', c.CampaignID)]; })) + '</section>';
     },
     teamLeads: function () {
       return '<div class="page-head"><div><p>Team leads build their team\'s schedules and approve their leave. Give each a user account (Users and roles) linked to their profile here.</p></div><div class="actions"><button class="btn btn-primary" data-act="editTl">Add team lead</button></div></div><section class="panel">' +
@@ -2738,7 +2915,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   };
   ACT.editCampaign = function (el) {
     var c = el && el.dataset.id ? S.idx.camps[el.dataset.id] : null;
-    simpleForm({ title: c ? 'Edit campaign' : 'Add campaign', rec: c, idKey: 'CampaignID', action: 'saveCampaign', done: 'Campaign saved.', fields: [{ k: 'Name', label: 'Name', req: true, max: 80 }, { k: 'Status', label: 'Status', type: 'select', options: opts(C.LISTS.ActiveStatus, c ? c.Status : 'Active') }, { k: 'Description', label: 'Notes', type: 'textarea', span: 'span2', max: 1000 }] });
+    simpleForm({ title: c ? 'Edit campaign' : 'Add campaign', rec: c, idKey: 'CampaignID', action: 'saveCampaign', done: 'Campaign saved.', fields: [{ k: 'Name', label: 'Name', req: true, max: 80 }, { k: 'Status', label: 'Status', type: 'select', options: opts(C.LISTS.ActiveStatus, c ? c.Status : 'Active') }, { k: 'MinOnShift', label: 'Minimum agents on shift per day (optional)', max: 4, hint: 'Days with fewer agents on shift are highlighted in the schedule.' }, { k: 'Description', label: 'Notes', type: 'textarea', span: 'span2', max: 1000 }] });
   };
   ACT.editTl = function (el) {
     var t = el && el.dataset.id ? S.idx.tls[el.dataset.id] : null, cur = t ? C.splitIds(t.CampaignIDs) : [];
@@ -2805,7 +2982,8 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     dropMenu(el, '<div class="menu-h"><strong>' + esc(S.user.displayName) + '</strong><br>' + esc(S.user.email) + '<br>' + esc(S.user.roleLabel) + '</div>' +
       '<button data-act="cycleTheme">Theme: ' + esc(theme) + '</button>' + (S.mode === 'demo' ? '<button data-act="signOut">Switch demo user</button>' : '') + '<button data-act="signOut">Sign out</button>');
   };
-  ACT.cycleTheme = function () { var r = document.documentElement, n = { system: 'light', light: 'dark', dark: 'system' }[r.dataset.theme || 'system']; if (n === 'system') delete r.dataset.theme; else r.dataset.theme = n; lsSet('ags_theme', n); $$('.menu').forEach(function (m) { m.remove(); }); toast('Theme: ' + n + '.'); };
+  ACT.cycleTheme = function () { return ACT.themeNext(); };
+  ACT._oldCycleTheme = function () { var r = document.documentElement, n = { system: 'light', light: 'dark', dark: 'system' }[r.dataset.theme || 'system']; if (n === 'system') delete r.dataset.theme; else r.dataset.theme = n; lsSet('ags_theme', n); $$('.menu').forEach(function (m) { m.remove(); }); toast('Theme: ' + n + '.'); };
   ACT.signOut = function () {
     $$('.menu').forEach(function (m) { m.remove(); });
     var doIt = function () { closeAllModals(); if (S.mode === 'http') Auth.signOut(); if (S.mode === 'gas') { $('#app').innerHTML = '<div class="login-main" style="margin:auto"><div class="login-card"><h2>Signed out of this page</h2><p>This copy of the app uses your Google session. To switch accounts, sign out of Google, then reload.</p><button class="btn" onclick="location.reload()">Reload</button></div></div>'; S.user = null; return; } S.user = null; S.data = null; location.hash = ''; renderLogin(); };
