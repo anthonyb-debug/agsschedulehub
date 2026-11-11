@@ -486,7 +486,7 @@ table.t .group-h th{background:var(--surface);border-bottom:0;font-size:11.5px;c
 @media (min-width:1100px){.topbar{flex-wrap:nowrap}.topbar .tb-title{flex:1 1 auto;min-width:120px}.topbar .tb-title h1,.topbar .tb-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
 @media (min-width:1100px) and (max-width:1520px){#sync-pill span{display:none}#sync-pill{padding:6px 9px}.topbar #gsearch{width:140px}#g-camp{max-width:150px}}
 
-/* ---------- operations hub ---------- */
+/* ---------- app ---------- */
 .modal.xl{max-width:min(1240px,96vw);display:flex;flex-direction:column;max-height:calc(100vh - 72px)} .modal.xl .modal-b{overflow:auto;min-height:0;flex:1 1 auto} .modal.xl .modal-h,.modal.xl .modal-f{flex:none}
 .pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:10px;background:var(--neutral-soft);color:var(--ink-2);white-space:nowrap}
 .pill-info{background:var(--accent-soft);color:var(--accent)} .pill-warn{background:var(--warn-soft);color:var(--warn)} .pill-bad{background:var(--bad-soft);color:var(--bad)} .pill-ok{background:var(--ok-soft);color:var(--ok)}
@@ -1595,7 +1595,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
 <script>
 
 /* =====================================================================
- * AGS COACHING HUB — APPLICATION
+ * AGS SCHEDULES — APPLICATION
  * ===================================================================== */
 (function () {
   'use strict';
@@ -2073,14 +2073,14 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
           }).join('') + '</div><div class="row" style="margin-top:10px"><span class="small muted">Demo data generated for ' + esc(fmtDate(S.demoT.state.generatedFor)) + '.</span><button class="btn btn-sm btn-ghost" data-act="demoResetLogin">Reset demo data</button></div></section>';
       } catch (e) { demoHtml = '<div class="note bad">The demo could not start: ' + esc(e.message) + '</div>'; }
     }
-    $('#app').innerHTML = '<div class="login"><section class="login-side"><div class="brand" style="border:0;padding:0"><div class="brand-mark" role="img" aria-label="Alliance Global Solutions logo"></div><div class="brand-name">Operations Hub<small>Alliance Global Solutions</small></div></div>' +
+    $('#app').innerHTML = '<div class="login"><section class="login-side"><div class="brand" style="border:0;padding:0"><div class="brand-mark" role="img" aria-label="Alliance Global Solutions logo"></div><div class="brand-name">Schedules<small>Alliance Global Solutions</small></div></div>' +
       '<div><h1>Your schedule, breaks and leave.</h1><p>Today\'s shift with your break and lunch times, the week and month ahead, your team\'s schedule, and leave requests with the Time Off Request form.</p>' +
-      '<ul><li>Breaks and lunch arranged by AGS\'s rules</li><li>Notified when your leave or schedule changes</li><li>Times in EST, all year</li></ul></div>' +
+      '<ul><li>Breaks and lunch arranged by AGS\'s rules</li><li>Notified when your leave or schedule changes</li><li>Dates and times in PHT; today follows EST</li></ul></div>' +
       '<p class="small" style="color:#8193AE">Access is limited to registered company Google accounts. Every change is audited.</p></section>' +
       '<main class="login-main" id="main"><section class="login-card" aria-labelledby="signin-h"><h2 id="signin-h">Sign in</h2>' +
       (err ? '<div class="note bad" role="alert" style="margin:10px 0">' + esc(err.message || String(err)) + '</div>' : '') +
       (live ? '<p class="muted small">Use your company Google account' + (CFG.ALLOWED_DOMAIN ? ' (@' + esc(CFG.ALLOWED_DOMAIN) + ')' : '') + '.</p><div id="gis-btn" style="margin-top:12px;min-height:44px"><span class="spinner"></span>Loading Google sign-in…</div>'
-        : '<div class="note warn" style="margin-top:10px">The live backend is not configured in this copy of the app. Missing: <strong>' + esc(missing.join(', ')) + '</strong>. An administrator sets these in the <code>AGS_CONFIG</code> block at the top of AGS_Coaching_Hub.html (see DEPLOYMENT.md).</div>') +
+        : '<div class="note warn" style="margin-top:10px">The live backend is not configured in this copy of the app. Missing: <strong>' + esc(missing.join(', ')) + '</strong>. An administrator sets these in the <code>AGS_CONFIG</code> block at the top of index.html (see DEPLOYMENT.md).</div>') +
       '</section>' + demoHtml + '</main></div>';
     if (live) {
       Auth.load().then(function () { var el = $('#gis-btn'); if (!el) return; el.innerHTML = ''; Auth.button(el); if (!err) { try { google.accounts.id.prompt(); } catch (e) { } } },
