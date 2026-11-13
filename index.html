@@ -688,6 +688,7 @@ body{font-family:var(--font)} .topbar h1{font-weight:800;letter-spacing:-.02em}
 .sg2{position:relative} .today-band{position:absolute;pointer-events:none;background:var(--today-band);border-left:1.5px solid var(--today-edge);border-right:1.5px solid var(--today-edge);border-radius:0 0 12px 12px;z-index:2}
 .sg2-c.is-today,.sg2-c.tile-off.is-today{box-shadow:none} .sg2-c.tile-off.is-today{box-shadow:inset 0 0 0 1px var(--line-2)} .sg2-c.is-today.mc-req{box-shadow:inset 0 0 0 1.5px var(--t-req)}
 .sg2-sum span.is-today{box-shadow:none;color:var(--today);font-weight:800}
+.br-ov{margin-top:3px;font-size:11.5px;font-weight:700;color:#B42318;max-width:260px;line-height:1.35} :root[data-theme="dark"] .br-ov{color:#FF9C8F}
 /* phones: agents get a bottom tab bar */
 .tabbar{display:none}
 @media (max-width:900px){
@@ -973,6 +974,100 @@ var AGSCore = (function () {
     if (rel(si, b2) + 15 > si.length) b2 = si.start + si.length - 30;
     return { Break1: hm24(b1), Lunch: hm24(l), Break2: hm24(b2) };
   }
+  // ------------------------------------------------------------------ no two agents of a campaign away at once
+  // Times as absolute minutes (PH date × 1440 + PHT minutes), so overnight shifts and neighbouring days line up.
+  function awayIntervals(day) {
+    var si = shiftInfo(day && day.Shift); if (!si.valid || si.off || si.blank || !isIsoDate(day.Date)) return [];
+    var base = dnum(day.Date) * 1440 + si.start, out = [];
+    [['Break1', 15, '1st break'], ['Lunch', 60, 'lunch'], ['Break2', 15, 'last break']].forEach(function (x) { var r = rel(si, day[x[0]]); if (r !== null) out.push({ s: base + r, e: base + r + x[1], what: x[2] }); });
+    return out;
+  }
+  function overlapMin(a, list) { var m = 0; list.forEach(function (b) { m += Math.max(0, Math.min(a.e, b.e) - Math.max(a.s, b.s)); }); return m; }
+  // Every allowed choice for one day, best first (lunch as late as allowed, as before). Each choice: [[relStart, length], …].
+  function breakChoices(si) {
+    var out = [];
+    if (si.length < 360) {   // short shift: one 15-minute break, as near the middle as possible
+      var mid = Math.round(si.length / 2 / 15) * 15;
+      for (var r = 60; r + 15 <= si.length - 30; r += 15) out.push([[r, 15]]);
+      out.sort(function (a, c) { return Math.abs(a[0][0] - mid) - Math.abs(c[0][0] - mid); });
+      return out.length ? out : [[[mid, 15]]];
+    }
+    for (var L = BREAK_RULES.lunch[1]; L >= BREAK_RULES.b1[0] + 15; L -= 15)
+      for (var b1 = Math.min(BREAK_RULES.b1[1], L - 15); b1 >= BREAK_RULES.b1[0]; b1 -= 15) {
+        var any = false;
+        for (var b2 = L + 60 + BREAK_RULES.b2After[0]; b2 <= L + 60 + BREAK_RULES.b2After[1]; b2 += 15) if (b2 + 15 <= si.length) { out.push([[b1, 15], [L, 60], [b2, 15]]); any = true; }
+        if (!any) out.push([[b1, 15], [L, 60], [Math.max(L + 75, si.length - 30), 15]]);
+      }
+    return out;
+  }
+  // Places breaks and lunch for `items` (days needing times), around `fixed` (days whose times stay as they are), so that
+  // no two agents are away at once. It searches arrangements for the whole group (backtracking, with a work limit) and
+  // takes the first with no overlap; if none exists within the rules, each agent in turn gets the choice with the least
+  // overlap, and the overlaps are reported. Returns { times: {key: {Break1, Lunch, Break2}}, overlaps: [...] }.
+  function placeBreaks(items, fixed, keyOf) {
+    keyOf = keyOf || function (d) { return d.AgentID + '|' + d.Date; };
+    var occ = [];
+    (fixed || []).forEach(function (d) { awayIntervals(d).forEach(function (iv) { iv.who = d.AgentID; occ.push(iv); }); });
+    var order = (items || []).filter(function (d) { var si = shiftInfo(d.Shift); return si.valid && !si.off && !si.blank && isIsoDate(d.Date); })
+      .sort(function (x, y) { var ax = dnum(x.Date) * 1440 + shiftInfo(x.Shift).start, ay = dnum(y.Date) * 1440 + shiftInfo(y.Shift).start; return ax - ay || (s(x.AgentID) < s(y.AgentID) ? -1 : 1); });
+    var info = order.map(function (d) {
+      var si = shiftInfo(d.Shift), base = dnum(d.Date) * 1440 + si.start;
+      return { d: d, si: si, opts: breakChoices(si).map(function (ch) { return ch.map(function (x) { return { s: base + x[0], e: base + x[0] + x[1] }; }); }) };
+    });
+    var hits = function (ivs, list, who) { for (var a = 0; a < ivs.length; a++) for (var c = 0; c < list.length; c++) if (list[c].who !== who && Math.min(ivs[a].e, list[c].e) > Math.max(ivs[a].s, list[c].s)) return true; return false; };
+    var clash = function (a, c) { for (var x = 0; x < a.length; x++) for (var y = 0; y < c.length; y++) if (Math.min(a[x].e, c[y].e) > Math.max(a[x].s, c[y].s)) return true; return false; };
+    // Look-ahead search (hardest agent first) for an arrangement of agents `idx` with no overlap; fills pick and returns true if found.
+    function solve(idx, pick, budget) {
+      var found = false, base = occ;
+      var live0 = idx.map(function (i) { var it = info[i], ok = []; for (var k = 0; k < it.opts.length; k++) if (!hits(it.opts[k], base, it.d.AgentID)) ok.push(k); return ok; });
+      var liveBy = {}; idx.forEach(function (i, n) { liveBy[i] = live0[n]; });
+      (function dfs(liveOpts, left) {
+        if (found || budget.n <= 0) return;
+        if (!left.length) { found = true; return; }
+        var bi = 0; for (var q = 1; q < left.length; q++) if (liveOpts[left[q]].length < liveOpts[left[bi]].length) bi = q;
+        var i = left[bi], rest = left.slice(0, bi).concat(left.slice(bi + 1)), it = info[i], opts = liveOpts[i];
+        for (var z = 0; z < opts.length && !found && budget.n > 0; z++) {
+          var k = opts[z]; budget.n--; pick[i] = k;
+          var mine = it.opts[k], next = Object.assign({}, liveOpts), dead = false;
+          for (var r = 0; r < rest.length && !dead; r++) { var o = rest[r]; next[o] = liveOpts[o].filter(function (kk) { return !clash(info[o].opts[kk], mine); }); if (!next[o].length) dead = true; }
+          if (!dead) dfs(next, rest);
+          if (!found) pick[i] = undefined;
+        }
+      })(liveBy, idx.slice());
+      return found;
+    }
+    // 1) everyone with no overlap; 2) otherwise as many as possible (in shift order) with no overlap, then the rest
+    //    each get the choice with the least overlap
+    var all = info.map(function (_, i) { return i; }), pick = new Array(info.length), budget = { n: 200000 };
+    if (!solve(all, pick, budget)) {
+      var keep = 0;
+      for (var m = all.length - 1; m >= 1; m--) { var tryPick = new Array(info.length); if (solve(all.slice(0, m), tryPick, { n: 40000 })) { pick = tryPick; keep = m; break; } }
+      if (!keep) pick = new Array(info.length);
+      var taken = occ.slice(); for (var a = 0; a < keep; a++) info[a].opts[pick[a]].forEach(function (iv) { taken.push({ s: iv.s, e: iv.e, who: info[a].d.AgentID }); });
+      for (var b2i = keep; b2i < info.length; b2i++) {
+        var it = info[b2i], bestK = 0, bestScore = Infinity, others = taken.filter(function (o) { return o.who !== it.d.AgentID; });
+        for (var k = 0; k < it.opts.length; k++) { var sc = 0; it.opts[k].forEach(function (iv) { sc += overlapMin(iv, others); }); if (sc < bestScore) { bestScore = sc; bestK = k; if (!sc) break; } }
+        pick[b2i] = bestK; it.opts[bestK].forEach(function (iv) { taken.push({ s: iv.s, e: iv.e, who: it.d.AgentID }); });
+      }
+    }
+    var times = {}, overlaps = [], placed = occ.slice();
+    info.forEach(function (it, i) {
+      var ch = it.opts[pick[i]], rs = ch.map(function (iv) { return iv.s - (dnum(it.d.Date) * 1440 + it.si.start); });
+      times[keyOf(it.d)] = rs.length === 1 ? { Break1: hm24(it.si.start + rs[0]), Lunch: '', Break2: '' } : { Break1: hm24(it.si.start + rs[0]), Lunch: hm24(it.si.start + rs[1]), Break2: hm24(it.si.start + rs[2]) };
+      var whats = rs.length === 1 ? ['1st break'] : ['1st break', 'lunch', 'last break'];
+      ch.forEach(function (iv, x) { placed.forEach(function (o) { if (o.who === it.d.AgentID) return; var m = Math.max(0, Math.min(iv.e, o.e) - Math.max(iv.s, o.s)); if (m) overlaps.push({ agentId: it.d.AgentID, date: it.d.Date, with: o.who, what: whats[x], minutes: m }); }); });
+      ch.forEach(function (iv) { placed.push({ s: iv.s, e: iv.e, who: it.d.AgentID }); });
+    });
+    return { times: times, overlaps: overlaps };
+  }
+  // Who is away at the same time as someone else (for warnings on screen).
+  function findOverlaps(days) {
+    var all = []; (days || []).forEach(function (d) { awayIntervals(d).forEach(function (iv) { iv.who = d.AgentID; iv.date = d.Date; all.push(iv); }); });
+    var out = [];
+    for (var i = 0; i < all.length; i++) for (var j = i + 1; j < all.length; j++) { var a = all[i], c = all[j]; if (a.who === c.who) continue; var m = Math.max(0, Math.min(a.e, c.e) - Math.max(a.s, c.s)); if (m) out.push({ a: a.who, b: c.who, aWhat: a.what, bWhat: c.what, minutes: m, date: a.date }); }
+    return out;
+  }
+
   // Warnings (not errors): a team lead may have a reason to move a break outside the rules.
   function checkBreaks(day) {
     var si = shiftInfo(day.Shift), w = []; if (!si.valid || si.off || si.blank) return w;
@@ -1220,11 +1315,27 @@ var AGSCore = (function () {
       var shiftChanged = !cur || shiftInfo(cur.Shift).label !== si.label, given = ['Break1', 'Lunch', 'Break2'].some(function (k) { return raw[k] !== undefined; });
       if (si.off || si.blank) { rec.Break1 = ''; rec.Lunch = ''; rec.Break2 = ''; }
       else if (given) { rec.Break1 = f.Break1 !== undefined ? f.Break1 : cur.Break1; rec.Lunch = f.Lunch !== undefined ? f.Lunch : cur.Lunch; rec.Break2 = f.Break2 !== undefined ? f.Break2 : cur.Break2; }
-      else if (shiftChanged || raw.autoBreaks) { var sg = suggestBreaks(si, slotFor(ctx, a.AgentID, f.Date, si.label, plan.filter(function (x) { return x.rec.Date === f.Date && x.rec.Shift === si.label; }).map(function (x) { return x.rec.AgentID; }).concat([a.AgentID]))); rec.Break1 = sg.Break1; rec.Lunch = sg.Lunch; rec.Break2 = sg.Break2; }
+      else if (shiftChanged || raw.autoBreaks) { rec.__auto = true; var sg = { Break1: '', Lunch: '', Break2: '' }; rec.Break1 = sg.Break1; rec.Lunch = sg.Lunch; rec.Break2 = sg.Break2; }
       plan.push({ cur: cur, rec: rec, a: a });
     });
     failIf(errors);
+    // breaks and lunch for new or changed shifts: placed so no two agents of a campaign are away at once
+    var autoGroups = {};
+    plan.forEach(function (x) { if (x.rec.__auto) (autoGroups[x.a.CampaignID + '|' + x.rec.Date] = autoGroups[x.a.CampaignID + '|' + x.rec.Date] || []).push(x); });
+    var overlapWarn = [];
+    Object.keys(autoGroups).forEach(function (k) {
+      var cid = k.split('|')[0], dt = k.split('|')[1], autoIds = {}; autoGroups[k].forEach(function (x) { autoIds[x.a.AgentID + '|' + dt] = 1; });
+      var planned = {}; plan.forEach(function (x) { planned[x.a.AgentID + '|' + x.rec.Date] = x.rec; });
+      var fixed = ctx.repo.all('days').filter(function (d) { return live(d) && d.CampaignID === cid && Math.abs(diffDays(d.Date, dt)) <= 1 && !autoIds[d.AgentID + '|' + d.Date]; })
+        .map(function (d) { return planned[d.AgentID + '|' + d.Date] || d; });
+      plan.forEach(function (x) { if (x.a.CampaignID === cid && !x.rec.__auto && Math.abs(diffDays(x.rec.Date, dt)) <= 1 && !fixed.some(function (d) { return d.AgentID === x.a.AgentID && d.Date === x.rec.Date; })) fixed.push(x.rec); });
+      var res = placeBreaks(autoGroups[k].map(function (x) { return x.rec; }), fixed);
+      autoGroups[k].forEach(function (x) { var tm = res.times[x.rec.AgentID + '|' + x.rec.Date]; if (tm) { x.rec.Break1 = tm.Break1; x.rec.Lunch = tm.Lunch; x.rec.Break2 = tm.Break2; } });
+      overlapWarn = overlapWarn.concat(res.overlaps);
+    });
+    plan.forEach(function (x) { delete x.rec.__auto; });
     var warnings = [], changes = [], publish = !!p.publish && isAdmin(ctx.user);
+    overlapWarn.slice(0, 20).forEach(function (o) { warnings.push(agentName(ctx, o.agentId) + ' ' + o.date + ': ' + o.what + ' overlaps with ' + agentName(ctx, o.with) + ' for ' + o.minutes + ' min (no free time left within the break rules).'); });
     plan.forEach(function (x) {
       var w = checkBreaks(x.rec); if (w.length) warnings.push(agentName(ctx, x.a.AgentID) + ' ' + x.rec.Date + ': ' + w.join(' '));
       if (publish) { x.rec.Published = 'TRUE'; if (!x.cur || !b(x.cur.Published)) x.rec.PublishedAt = ctx.now; }
@@ -1256,19 +1367,27 @@ var AGSCore = (function () {
   H.arrangeBreaks = { write: true, fn: function (ctx, p) {
     editGuard(ctx);
     var dates = leaveDates(p.dates); if (!dates.length || dates.length > 62) throw AgsError('VALIDATION', 'Choose up to 62 dates.');
-    var names = {}, n2 = 0, moved = []; ctx.repo.all('agents').forEach(function (a) { names[a.AgentID] = s(a.FullName).toLowerCase(); });
+    var n2 = 0, moved = [], overlaps = [], days = ctx.repo.all('days').filter(live);
     dates.forEach(function (dt) {
-      var groups = {};
-      ctx.list('days', function (d) { return d.Date === dt && ctx.visible('days', d) && (!p.campaignId || d.CampaignID === p.campaignId) && !shiftInfo(d.Shift).off && shiftInfo(d.Shift).valid && d.Shift; })
-        .forEach(function (d) { (groups[d.Shift] = groups[d.Shift] || []).push(d); });
-      Object.keys(groups).forEach(function (sh) {
-        groups[sh].sort(function (x, y) { return names[x.AgentID] < names[y.AgentID] ? -1 : 1; }).forEach(function (d, k) {
-          var sg = suggestBreaks(sh, k); var u2 = ctx.update('days', d.DayID, sg, d.RecordVersion, 'BREAKS_ARRANGED', { internal: false }); if (u2 !== d) { n2++; if (b(d.Published)) moved.push({ agentId: d.AgentID, date: d.Date, shift: false, text: breakText(u2) }); }
+      var mine = days.filter(function (d) { return d.Date === dt && ctx.visible('days', d) && (!p.campaignId || d.CampaignID === p.campaignId) && shiftInfo(d.Shift).valid && !shiftInfo(d.Shift).off && !shiftInfo(d.Shift).blank; });
+      var camps = {}; mine.forEach(function (d) { (camps[d.CampaignID] = camps[d.CampaignID] || []).push(d); });
+      Object.keys(camps).forEach(function (cid) {
+        var ids = {}; camps[cid].forEach(function (d) { ids[d.DayID] = 1; });
+        // kept as they are: neighbouring days, and the campaign's agents outside this team lead's view
+        var fixed = days.filter(function (d) { return d.CampaignID === cid && Math.abs(diffDays(d.Date, dt)) <= 1 && !ids[d.DayID]; });
+        var res = placeBreaks(camps[cid], fixed);
+        camps[cid].forEach(function (d) {
+          var tm = res.times[d.AgentID + '|' + d.Date]; if (!tm) return;
+          var u2 = ctx.update('days', d.DayID, tm, d.RecordVersion, 'BREAKS_ARRANGED', { internal: false });
+          if (u2 !== d) { n2++; if (b(d.Published)) moved.push({ agentId: d.AgentID, date: d.Date, shift: false, text: breakText(u2) }); }
         });
+        overlaps = overlaps.concat(res.overlaps);
       });
     });
     notifyChanges(ctx, moved);
-    ctx.primary = { entity: 'days', id: dates[0] }; var r = ctx.result(); r.arranged = n2; return r;
+    ctx.primary = { entity: 'days', id: dates[0] }; var r = ctx.result(); r.arranged = n2;
+    r.overlaps = overlaps.slice(0, 30).map(function (o) { return { agent: agentName(ctx, o.agentId), with: agentName(ctx, o.with), what: o.what, minutes: o.minutes, date: o.date }; });
+    return r;
   } };
 
   // ---------- leave ----------
@@ -1517,7 +1636,7 @@ var AGSCore = (function () {
     AgsError: AgsError, s: s, n: n, b: b, isIsoDate: isIsoDate, addDays: addDays, diffDays: diffDays, json: json, arr: arr, round: round, clone: clone, isEmail: isEmail, live: live, byKey: byKey, blank: blank, splitIds: splitIds,
     settingsWithDefaults: settingsWithDefaults, normRole: normRole, daysInMonth: daysInMonth, weekdayOf: weekdayOf,
     parseTime: parseTime, hm24: hm24, clock: clock, shiftInfo: shiftInfo, PHT_AHEAD: PHT_AHEAD, estMin: estMin, phtFromEst: phtFromEst, minutesIntoShift: minutesIntoShift, statusAt: statusAt, suggestBreaks: suggestBreaks, checkBreaks: checkBreaks, BREAK_RULES: BREAK_RULES,
-    leaveTypeNow: leaveTypeNow, leaveDates: leaveDates, activeLeave: activeLeave, leaveCounts: leaveCounts, gridPlan: gridPlan, gridTabName: gridTabName, gridTabMonth: gridTabMonth, colLetter: colLetter, dayLabel: dayLabel, shiftWords: shiftWords,
+    leaveTypeNow: leaveTypeNow, placeBreaks: placeBreaks, findOverlaps: findOverlaps, awayIntervals: awayIntervals, leaveDates: leaveDates, activeLeave: activeLeave, leaveCounts: leaveCounts, gridPlan: gridPlan, gridTabName: gridTabName, gridTabMonth: gridTabMonth, colLetter: colLetter, dayLabel: dayLabel, shiftWords: shiftWords,
     isAdmin: isAdmin, isTL: isTL, isAgentRole: isAgentRole, capabilities: capabilities, buildScope: buildScope, inScope: inScope,
     buildIndex: buildIndex, toCsv: toCsv, fmtRate: fmtRate, rate: rate,
     resolveUser: resolveUser, publicUser: publicUser, handle: handle, WRITE_ACTIONS: WRITE_ACTIONS, generateSynthetic: generateSynthetic,
@@ -2638,6 +2757,13 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var f = pf('breaks', { date: S.today }), ro = isAgentRole(); ensureMonth(f.date.slice(0, 7));
     var rows = peopleInView().map(function (a) { return { a: a, d: dayAny(a.AgentID, f.date) }; }).filter(function (x) { return x.d && x.d.Shift && !C.shiftInfo(x.d.Shift).off && !onLeaveAny(x.a.AgentID, f.date); })
       .sort(function (p, q) { var x = C.shiftInfo(p.d.Shift), y = C.shiftInfo(q.d.Shift); return x.start - y.start || (p.a.FullName < q.a.FullName ? -1 : 1); });
+    // who is away at the same time as someone else in the same campaign (breaks and lunch): one line per teammate
+    var ovNote = {}, byCamp = {}, acc = {};
+    rows.forEach(function (x) { (byCamp[x.a.CampaignID] = byCamp[x.a.CampaignID] || []).push(x.d); });
+    Object.keys(byCamp).forEach(function (cid) { C.findOverlaps(byCamp[cid]).forEach(function (o) {
+      [[o.a, o.b, o.aWhat], [o.b, o.a, o.bWhat]].forEach(function (p2) { var m = acc[p2[0]] = acc[p2[0]] || {}, e = m[p2[1]] = m[p2[1]] || { what: [], min: 0 }; if (e.what.indexOf(p2[2]) < 0) e.what.push(p2[2]); e.min += o.minutes; }); }); });
+    var nameOf = function (id) { return (S.idx.agents[id] || (S.data.roster || []).filter(function (r) { return r.AgentID === id; })[0] || {}).FullName || id; };
+    Object.keys(acc).forEach(function (id) { ovNote[id] = 'Same time as: ' + Object.keys(acc[id]).map(function (o) { var e = acc[id][o]; return nameOf(o) + ' (' + e.what.join(', ') + ', ' + e.min + ' min)'; }).join('; '); });
     var head = '<div class="page-head"><div class="ph-tip" style="flex:1">' + infoTip('Each agent\'s 1st break (15 min), lunch (1 hour) and last break (15 min). Rules: 1st break 1–2 hours into the shift, lunch within the first 4 hours, last break 1–2 hours after lunch.') + '</div><div class="actions">' +
       '<button class="btn btn-sm" data-act="brDay" data-d="-1" aria-label="Previous day">‹</button><input type="date" class="input input-sm" style="width:auto" id="br-date" data-change="brDate" value="' + esc(f.date) + '"><button class="btn btn-sm" data-act="brDay" data-d="1" aria-label="Next day">›</button>' +
       (ro ? '<label class="sr-only" for="br-c">Campaign</label><select id="br-c" class="input input-sm" style="width:auto" data-change="teamCamp">' + opts([['', 'All campaigns']].concat(S.data.campaigns.filter(C.live).map(function (c) { return [c.CampaignID, c.Name]; })), viewCampaign()) + '</select>' : rows.length ? '<button class="btn" data-act="brArrange">Arrange automatically</button><button class="btn btn-primary" data-act="brSave">Save changes</button>' : '') + '</div></div>' +
@@ -2653,7 +2779,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var page = head + '<section class="card card-flush"><div class="table-wrap"><table class="t br-t"><thead><tr><th>Agent</th><th>Shift</th><th>1st break</th><th>Lunch</th><th>Last break</th><th class="br-tl-h"><div class="br-hours">' + hours.join('') + '</div></th></tr></thead><tbody>' +
       rows.map(function (x) {
         var si = C.shiftInfo(x.d.Shift), w = C.checkBreaks(x.d), blk = function (t, len, cls) { var v = C.parseTime(t); return v === null ? '' : '<i class="' + cls + '" style="left:' + pos(v) + '%;width:' + (len / span * 100) + '%"></i>'; };
-        return '<tr data-day="' + esc(x.d.DayID) + '" class="' + (rows.indexOf(x) % 2 ? 'alt' : '') + '"><td><div class="who">' + avatar(x.a, 'av') + '<div><b>' + esc(x.a.FullName) + (ro && x.a.AgentID === myAgent().AgentID ? ' (you)' : '') + '</b><div class="t-sub">' + esc(campName(x.a.CampaignID)) + '</div></div></div></td><td style="white-space:nowrap">' + esc(shiftText(x.d.Shift)) + '</td>' +
+        return '<tr data-day="' + esc(x.d.DayID) + '" class="' + (rows.indexOf(x) % 2 ? 'alt' : '') + '"><td><div class="who">' + avatar(x.a, 'av') + '<div><b>' + esc(x.a.FullName) + (ro && x.a.AgentID === myAgent().AgentID ? ' (you)' : '') + '</b><div class="t-sub">' + esc(campName(x.a.CampaignID)) + '</div>' + (ovNote[x.a.AgentID] ? '<div class="br-ov">' + esc(ovNote[x.a.AgentID]) + '</div>' : '') + '</div></div></td><td style="white-space:nowrap">' + esc(shiftText(x.d.Shift)) + '</td>' +
           ['Break1', 'Lunch', 'Break2'].map(function (k3) { return ro ? '<td class="br-ro">' + esc(x.d[k3] ? C.clock(x.d[k3]) : '—') + '</td>' : '<td><input type="time" step="900" class="input input-sm br-in" data-a="' + esc(x.a.AgentID) + '" data-k="' + k3 + '" value="' + esc(x.d[k3]) + '" aria-label="' + esc(x.a.FullName + ' ' + k3) + '"></td>'; }).join('') +
           '<td class="br-tl"><div class="br-bar"><i class="br-shift" style="left:' + pos(si.start) + '%;width:' + (si.length / span * 100) + '%"></i>' + blk(x.d.Break1, 15, 'br-b') + blk(x.d.Lunch, 60, 'br-l') + blk(x.d.Break2, 15, 'br-b') + '</div>' + (w.length ? '<div class="small g-warn">⚠ ' + esc(w.join(' ')) + '</div>' : '') + '</td></tr>';
       }).join('') +
@@ -2665,8 +2791,15 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   CHG.brDate = function (el) { if (C.isIsoDate(el.value)) { S.f.breaks.date = el.value; render(); } };
   ACT.brArrange = function () {
     var f = S.f.breaks;
-    confirmDialog({ title: 'Arrange breaks automatically?', message: 'Everyone scheduled on ' + dLabel(f.date) + (S.g.campaignId ? ' in ' + campName(S.g.campaignId) : '') + ' gets breaks and lunch by the rules, staggered 15 minutes apart for agents on the same shift. Times set by hand that day are replaced.', ok: 'Arrange' }).then(function (r) {
-      if (!r) return; Api.write('arrangeBreaks', { dates: [f.date], campaignId: S.g.campaignId }, 'Arrange breaks').then(function (res) { render(); toast(plural(res.arranged || 0, 'agent') + ' arranged.', 'ok'); }, writeError);
+    confirmDialog({ title: 'Arrange breaks automatically?', message: 'Everyone scheduled on ' + dLabel(f.date) + (S.g.campaignId ? ' in ' + campName(S.g.campaignId) : '') + ' gets new breaks and lunch by the rules, placed so that no two agents of the same campaign are away at the same time. Times set by hand are replaced.', ok: 'Arrange' }).then(function (r) {
+      if (!r) return; Api.write('arrangeBreaks', { dates: [f.date], campaignId: S.g.campaignId }, 'Arrange breaks').then(function (res) {
+        render();
+        var ov = res.overlaps || [];
+        if (!ov.length) { toast(plural(res.arranged || 0, 'agent') + ' arranged. No one in the same campaign is away at the same time.', 'ok'); return; }
+        openModal({ title: 'Arranged, with ' + plural(ov.length, 'overlap'), body: '<p>There are more agents on the same shift than the break rules leave room for (at most 3 agents with the same start time can have completely separate breaks and lunch). These overlaps are as small as possible:</p><ul>' +
+          ov.slice(0, 15).map(function (o) { return '<li><b>' + esc(o.agent) + '</b>: ' + esc(o.what) + ' overlaps with <b>' + esc(o.with) + '</b> for ' + o.minutes + ' min</li>'; }).join('') + '</ul><p class="small muted">To remove them, give some agents a different shift start time, or move a break by hand (the rules are a guide: the app warns but allows it).</p>',
+          foot: '<button class="btn btn-primary" data-act="closeModal">OK</button>' });
+      }, writeError);
     });
   };
   ACT.brSave = function (el) {
