@@ -1367,8 +1367,11 @@ var AGSCore = (function () {
   H.arrangeBreaks = { write: true, fn: function (ctx, p) {
     editGuard(ctx);
     var dates = leaveDates(p.dates); if (!dates.length || dates.length > 62) throw AgsError('VALIDATION', 'Choose up to 62 dates.');
-    var n2 = 0, moved = [], overlaps = [], days = ctx.repo.all('days').filter(live);
-    dates.forEach(function (dt) {
+    if (p.futureOnly) dates = dates.filter(function (d) { return d >= ctx.today; });   // never rewrite past days
+    if (!dates.length) throw AgsError('VALIDATION', 'There are no days left to arrange in that range.');
+    var n2 = 0, moved = [], overlaps = [];
+    dates.slice().sort().forEach(function (dt) {
+      var days = ctx.repo.all('days').filter(live);   // fresh each day: the previous day's new times count
       var mine = days.filter(function (d) { return d.Date === dt && ctx.visible('days', d) && (!p.campaignId || d.CampaignID === p.campaignId) && shiftInfo(d.Shift).valid && !shiftInfo(d.Shift).off && !shiftInfo(d.Shift).blank; });
       var camps = {}; mine.forEach(function (d) { (camps[d.CampaignID] = camps[d.CampaignID] || []).push(d); });
       Object.keys(camps).forEach(function (cid) {
@@ -1916,7 +1919,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
   HttpTransport.prototype.call = function (action, payload, requestId, retried) {
     var self = this;
     return credential().then(function (cred) {
-      var ctl = window.AbortController ? new AbortController() : null, timer = setTimeout(function () { if (ctl) ctl.abort(); }, /^(bootstrap|getDays)$/.test(action) ? 150000 : 45000);   // a full year of days can take a while
+      var ctl = window.AbortController ? new AbortController() : null, timer = setTimeout(function () { if (ctl) ctl.abort(); }, /^(bootstrap|getDays|arrangeBreaks)$/.test(action) ? 150000 : 45000);   // a full year of days, or arranging a month, can take a while
       return fetch(CFG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, credentials: 'omit', redirect: 'follow', signal: ctl ? ctl.signal : undefined,
         body: JSON.stringify({ action: action, payload: payload, requestId: requestId, idToken: cred.idToken, sessionToken: cred.sessionToken }) })
         .then(function (r) {
@@ -2766,7 +2769,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     Object.keys(acc).forEach(function (id) { ovNote[id] = 'Same time as: ' + Object.keys(acc[id]).map(function (o) { var e = acc[id][o]; return nameOf(o) + ' (' + e.what.join(', ') + ', ' + e.min + ' min)'; }).join('; '); });
     var head = '<div class="page-head"><div class="ph-tip" style="flex:1">' + infoTip('Each agent\'s 1st break (15 min), lunch (1 hour) and last break (15 min). Rules: 1st break 1–2 hours into the shift, lunch within the first 4 hours, last break 1–2 hours after lunch.') + '</div><div class="actions">' +
       '<button class="btn btn-sm" data-act="brDay" data-d="-1" aria-label="Previous day">‹</button><input type="date" class="input input-sm" style="width:auto" id="br-date" data-change="brDate" value="' + esc(f.date) + '"><button class="btn btn-sm" data-act="brDay" data-d="1" aria-label="Next day">›</button>' +
-      (ro ? '<label class="sr-only" for="br-c">Campaign</label><select id="br-c" class="input input-sm" style="width:auto" data-change="teamCamp">' + opts([['', 'All campaigns']].concat(S.data.campaigns.filter(C.live).map(function (c) { return [c.CampaignID, c.Name]; })), viewCampaign()) + '</select>' : rows.length ? '<button class="btn" data-act="brArrange">Arrange automatically</button><button class="btn btn-primary" data-act="brSave">Save changes</button>' : '') + '</div></div>' +
+      (ro ? '<label class="sr-only" for="br-c">Campaign</label><select id="br-c" class="input input-sm" style="width:auto" data-change="teamCamp">' + opts([['', 'All campaigns']].concat(S.data.campaigns.filter(C.live).map(function (c) { return [c.CampaignID, c.Name]; })), viewCampaign()) + '</select>' : rows.length ? '<button class="btn" data-act="brArrange">Arrange automatically</button><button class="btn" data-act="brArrangeMonth">Arrange the rest of the month</button><button class="btn btn-primary" data-act="brSave">Save changes</button>' : '') + '</div></div>' +
       (ro ? '<div class="live live-box live-inline"></div>' : '');
     if (!rows.length) return { html: head + '<section class="card">' + emptyState('Nobody is scheduled on ' + dLabel(f.date), ro ? '' : 'Set shifts in the schedule sheet first.') + '</section>', mount: function () { if (ro) paintLive(); } };
     // the timeline covers from the earliest start to the latest end (night shifts run past midnight)
@@ -2802,6 +2805,33 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
       }, writeError);
     });
   };
+  // Every day from today (or the chosen day, if later) to the end of that month, campaign by campaign.
+  ACT.brArrangeMonth = function () {
+    var f = S.f.breaks, from = f.date > S.today ? f.date : S.today, end = monthEnd(f.date.slice(0, 7)), dates = [];
+    for (var d = from; d <= end; d = C.addDays(d, 1)) dates.push(d);
+    if (!dates.length) { toast('There are no days left to arrange in ' + monthLabel(f.date.slice(0, 7)) + '.', 'warn'); return; }
+    confirmDialog({ title: 'Arrange the rest of ' + monthLabel(f.date.slice(0, 7)) + '?', message: 'Breaks and lunch for every day from ' + dLabel(dates[0]) + ' to ' + dLabel(end) + (S.g.campaignId ? ' in ' + campName(S.g.campaignId) : '') + ' (' + plural(dates.length, 'day') + ') are placed by the rules so that no two agents of the same campaign are away at the same time. Times set by hand on those days are replaced. Past days are not changed. Agents get one notification with their new times.', ok: 'Arrange ' + plural(dates.length, 'day') }).then(function (r) {
+      if (!r) return;
+      // one week per request, in order, so each request stays well within the server's time limits
+      var chunks = []; for (var i = 0; i < dates.length; i += 7) chunks.push(dates.slice(i, i + 7));
+      var total = { arranged: 0, overlaps: [] };
+      var step = function (k) {
+        if (k >= chunks.length) { render(); showMonthResult(total, dates); return; }
+        toast('Arranging ' + (chunks.length > 1 ? 'week ' + (k + 1) + ' of ' + chunks.length : plural(dates.length, 'day')) + '…', 'ok', 4000);
+        Api.write('arrangeBreaks', { dates: chunks[k], campaignId: S.g.campaignId, futureOnly: true }, 'Arrange the month (' + (k + 1) + '/' + chunks.length + ')').then(function (res) {
+          total.arranged += res.arranged || 0; total.overlaps = total.overlaps.concat(res.overlaps || []); step(k + 1);
+        }, function (e) { render(); writeError(e); if (k) toast('Weeks 1–' + k + ' were arranged; the rest were not. Try again to finish.', 'warn', 8000); });
+      };
+      step(0);
+    });
+  };
+  function showMonthResult(res, dates) {
+    var ov = res.overlaps || [], days = {}; ov.forEach(function (o) { days[o.date] = 1; });
+    if (!ov.length) { toast(plural(dates.length, 'day') + ' arranged (' + plural(res.arranged || 0, 'agent-day') + ' updated). No one in the same campaign is away at the same time on any day.', 'ok', 7000); return; }
+    openModal({ title: 'Month arranged, with some overlaps', body: '<p>' + plural(res.arranged || 0, 'agent-day') + ' updated. On ' + plural(Object.keys(days).length, 'day') + ' there are more agents on the same shift than the break rules leave room for (at most 3 agents with the same start time can have completely separate breaks and lunch), so some overlap is unavoidable. It is kept as small as possible:</p><ul>' +
+      ov.slice(0, 12).map(function (o) { return '<li>' + esc(dLabel(o.date)) + ': <b>' + esc(o.agent) + '</b>, ' + esc(o.what) + ' overlaps with <b>' + esc(o.with) + '</b> for ' + o.minutes + ' min</li>'; }).join('') + (ov.length > 12 ? '<li>and ' + (ov.length - 12) + ' more</li>' : '') + '</ul><p class="small muted">Open a day on this page to see the red notes under each agent.</p>',
+      foot: '<button class="btn btn-primary" data-act="closeModal">OK</button>' });
+  }
   ACT.brSave = function (el) {
     var f = S.f.breaks, items = {};
     $$('.br-in').forEach(function (i) { var d = dayOf(i.dataset.a, f.date); if (d && (d[i.dataset.k] || '') !== i.value) { var it = items[i.dataset.a] = items[i.dataset.a] || { AgentID: i.dataset.a, Date: f.date, expectedVersion: d.RecordVersion }; it[i.dataset.k] = i.value; } });
