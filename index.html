@@ -689,6 +689,9 @@ body{font-family:var(--font)} .topbar h1{font-weight:800;letter-spacing:-.02em}
 .sg2-c.is-today,.sg2-c.tile-off.is-today{box-shadow:none} .sg2-c.tile-off.is-today{box-shadow:inset 0 0 0 1px var(--line-2)} .sg2-c.is-today.mc-req{box-shadow:inset 0 0 0 1.5px var(--t-req)}
 .sg2-sum span.is-today{box-shadow:none;color:var(--today);font-weight:800}
 .br-ov{margin-top:3px;font-size:11.5px;font-weight:700;color:#B42318;max-width:260px;line-height:1.35} :root[data-theme="dark"] .br-ov{color:#FF9C8F}
+.draft-note{margin:-6px 0 14px;padding:10px 14px;border-radius:10px;background:#FBF0DC;border:1px solid #F3D98A;color:#5A3A00;font-size:13px} :root[data-theme="dark"] .draft-note{background:#2b2312;border-color:#5a4520;color:#F2DFA9}
+.linkbtn{border:0;background:none;padding:0;color:var(--accent,#2563eb);font:inherit;font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline}
+.bm-mode .check{display:flex;margin:6px 0}
 /* phones: agents get a bottom tab bar */
 .tabbar{display:none}
 @media (max-width:900px){
@@ -914,7 +917,8 @@ var AGSCore = (function () {
     var x = s(t).trim().toUpperCase().replace(/\s+/g, '');
     var m = /^(\d{1,2})(?::?(\d{2}))?(AM|PM|A|P)$/.exec(x);   // 9:00PM, 9PM, 9P, 930P
     if (m) { var h = +m[1], mi = m[2] ? +m[2] : 0; if (h < 1 || h > 12 || mi > 59) return null; return (h % 12 + (m[3][0] === 'P' ? 12 : 0)) * 60 + mi; }
-    m = /^(\d{1,2}):(\d{2})$/.exec(x); if (m && +m[1] < 24 && +m[2] < 60) return +m[1] * 60 + +m[2];
+    m = /^(\d{1,2}):(\d{2})(?::\d{2})?$/.exec(x); if (m && +m[1] < 24 && +m[2] < 60) return +m[1] * 60 + +m[2];   // 21:00, 1:00, 1:00:00 (seconds ignored)
+    m = /^(\d{1,2}):(\d{2})(?::\d{2})?(AM|PM)$/.exec(x); if (m && +m[1] >= 1 && +m[1] <= 12 && +m[2] < 60) return (+m[1] % 12 + (m[3] === 'PM' ? 12 : 0)) * 60 + +m[2];   // 1:00:00 AM
     return null;
   }
   function hm24(min) { min = ((min % 1440) + 1440) % 1440; return ('0' + Math.floor(min / 60)).slice(-2) + ':' + ('0' + min % 60).slice(-2); }
@@ -1091,6 +1095,28 @@ var AGSCore = (function () {
   function colLetter(i) { var x = ''; i++; while (i > 0) { var r = (i - 1) % 26; x = String.fromCharCode(65 + r) + x; i = Math.floor((i - 1) / 26); } return x; }
   function dayLabel(d) { return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(d + 'T00:00:00Z').getUTCDay()] + ' ' + (+d.slice(8, 10)) + ' ' + MON3[+d.slice(5, 7) - 1]; }
   function shiftWords(sh) { var si = shiftInfo(sh); return si.off ? 'a rest day' : !si.valid || si.blank ? 'not scheduled' : clock(si.start) + ' – ' + clock(si.end) + ' PHT'; }
+  // Last month's pattern: for each agent, the shift they worked most often on each weekday of `baseMonth`
+  // (rest days included), applied to every date of `targetMonth`. Returns { agentId: { date: shift } }.
+  function patternShifts(days, agentIds, baseMonth, targetMonth) {
+    var want = {}; (agentIds || []).forEach(function (id) { want[id] = 1; });
+    var count = {};
+    (days || []).forEach(function (d) {
+      if (!live(d) || !want[d.AgentID] || s(d.Date).slice(0, 7) !== baseMonth) return;
+      var si = shiftInfo(d.Shift); if (!si.valid || si.blank) return;
+      var w = weekdayOf(d.Date), a = count[d.AgentID] = count[d.AgentID] || {}, c = a[w] = a[w] || {};
+      c[si.label] = (c[si.label] || 0) + 1;
+    });
+    var out = {}, y = +targetMonth.slice(0, 4), m = +targetMonth.slice(5, 7), dim = daysInMonth(y, m);
+    Object.keys(count).forEach(function (id) {
+      var pat = {}; Object.keys(count[id]).forEach(function (w) { var c = count[id][w]; pat[w] = Object.keys(c).sort(function (p, q) { return c[q] - c[p] || (p < q ? -1 : 1); })[0]; });
+      var o = out[id] = {};
+      for (var i = 1; i <= dim; i++) { var dt = targetMonth + '-' + ('0' + i).slice(-2), w2 = weekdayOf(dt); if (pat[w2]) o[dt] = pat[w2]; }
+    });
+    return out;
+  }
+  // A month tab marked DRAFT (cell D1) is checked but not published.
+  function gridIsDraft(aoa) { return /^\s*draft\s*$/i.test(s(((aoa || [])[0] || [])[3])); }
+  function prevMonthOf(month) { var y = +month.slice(0, 4), m = +month.slice(5, 7) - 1; if (m < 1) { m = 12; y--; } return y + '-' + ('0' + m).slice(-2); }
   function gridPlan(aoa, month, data) {
     var rows = (aoa || []).map(function (r) { return (r || []).map(function (c) { return s(c).trim(); }); }), hi = -1;
     for (var i = 0; i < Math.min(rows.length, 6) && hi < 0; i++) if (/^agent$/i.test(rows[i][0] || '')) hi = i;
@@ -1293,6 +1319,7 @@ var AGSCore = (function () {
     ctx.list('notifications', function (r) { return r.AgentID === ctx.user.agentId && !b(r.Read) && (!ids || ids.indexOf(r.NotifID) >= 0); }).forEach(function (r) { ctx.update('notifications', r.NotifID, { Read: 'TRUE' }, r.RecordVersion, 'NOTIFY_READ', { internal: true }); });
   } };
   // The live app reads the schedule Google Sheet in Apps Script (Code.gs); this core action only exists for the demo.
+  H.prepareGridMonth = { fn: function (ctx) { if (!isAdmin(ctx.user)) forbid('Only Admins prepare a month.'); throw AgsError('VALIDATION', 'Preparing a month runs on the live app only (it creates a tab in the schedule sheet).'); } };
   H.syncGrid = { fn: function (ctx) { if (!capabilities(ctx.user).editSchedule) forbid('Only team leads and Admins sync the sheet.'); throw AgsError('VALIDATION', 'The Google Sheet sync runs on the live app only.'); } };
 
   // Saves many days at once (create or change). Breaks: given by hand, or suggested when the shift is new or changed.
@@ -1314,7 +1341,7 @@ var AGSCore = (function () {
       var rec = { AgentID: a.AgentID, Date: f.Date, Shift: si.label, Notes: f.Notes !== undefined ? f.Notes : (cur ? cur.Notes : '') };
       var shiftChanged = !cur || shiftInfo(cur.Shift).label !== si.label, given = ['Break1', 'Lunch', 'Break2'].some(function (k) { return raw[k] !== undefined; });
       if (si.off || si.blank) { rec.Break1 = ''; rec.Lunch = ''; rec.Break2 = ''; }
-      else if (given) { rec.Break1 = f.Break1 !== undefined ? f.Break1 : cur.Break1; rec.Lunch = f.Lunch !== undefined ? f.Lunch : cur.Lunch; rec.Break2 = f.Break2 !== undefined ? f.Break2 : cur.Break2; }
+      else if (given) { rec.__given = true; rec.Break1 = f.Break1 !== undefined ? f.Break1 : cur.Break1; rec.Lunch = f.Lunch !== undefined ? f.Lunch : cur.Lunch; rec.Break2 = f.Break2 !== undefined ? f.Break2 : cur.Break2; }
       else if (shiftChanged || raw.autoBreaks) { rec.__auto = true; var sg = { Break1: '', Lunch: '', Break2: '' }; rec.Break1 = sg.Break1; rec.Lunch = sg.Lunch; rec.Break2 = sg.Break2; }
       plan.push({ cur: cur, rec: rec, a: a });
     });
@@ -1333,9 +1360,20 @@ var AGSCore = (function () {
       autoGroups[k].forEach(function (x) { var tm = res.times[x.rec.AgentID + '|' + x.rec.Date]; if (tm) { x.rec.Break1 = tm.Break1; x.rec.Lunch = tm.Lunch; x.rec.Break2 = tm.Break2; } });
       overlapWarn = overlapWarn.concat(res.overlaps);
     });
-    plan.forEach(function (x) { delete x.rec.__auto; });
+    // hand-set times: warn when they clash with someone else in the same campaign that day (saved anyway)
+    var planned2 = {}; plan.forEach(function (x) { planned2[x.a.AgentID + '|' + x.rec.Date] = x.rec; });
+    var seenPair = {};
+    plan.forEach(function (x) {
+      if (x.rec.__auto || !x.rec.__given) return;
+      var mine = awayIntervals(x.rec); if (!mine.length) return;
+      ctx.repo.all('days').filter(function (d) { return live(d) && d.CampaignID === x.a.CampaignID && d.AgentID !== x.a.AgentID && Math.abs(diffDays(d.Date, x.rec.Date)) <= 1; })
+        .map(function (d) { return planned2[d.AgentID + '|' + d.Date] || d; })
+        .forEach(function (o) { awayIntervals(o).forEach(function (iv) { mine.forEach(function (m) { var mm = Math.max(0, Math.min(m.e, iv.e) - Math.max(m.s, iv.s)); var pk = [x.a.AgentID, o.AgentID].sort().join('|') + x.rec.Date + m.what + iv.what;
+          if (mm && !seenPair[pk]) { seenPair[pk] = 1; overlapWarn.push({ agentId: x.a.AgentID, date: x.rec.Date, with: o.AgentID, what: m.what, minutes: mm, manual: true }); } }); }); });
+    });
+    plan.forEach(function (x) { delete x.rec.__auto; delete x.rec.__given; });
     var warnings = [], changes = [], publish = !!p.publish && isAdmin(ctx.user);
-    overlapWarn.slice(0, 20).forEach(function (o) { warnings.push(agentName(ctx, o.agentId) + ' ' + o.date + ': ' + o.what + ' overlaps with ' + agentName(ctx, o.with) + ' for ' + o.minutes + ' min (no free time left within the break rules).'); });
+    overlapWarn.slice(0, 20).forEach(function (o) { warnings.push(agentName(ctx, o.agentId) + ' ' + o.date + ': ' + o.what + ' overlaps with ' + agentName(ctx, o.with) + ' for ' + o.minutes + ' min' + (o.manual ? '.' : ' (no free time left within the break rules).')); });
     plan.forEach(function (x) {
       var w = checkBreaks(x.rec); if (w.length) warnings.push(agentName(ctx, x.a.AgentID) + ' ' + x.rec.Date + ': ' + w.join(' '));
       if (publish) { x.rec.Published = 'TRUE'; if (!x.cur || !b(x.cur.Published)) x.rec.PublishedAt = ctx.now; }
@@ -1639,7 +1677,7 @@ var AGSCore = (function () {
     AgsError: AgsError, s: s, n: n, b: b, isIsoDate: isIsoDate, addDays: addDays, diffDays: diffDays, json: json, arr: arr, round: round, clone: clone, isEmail: isEmail, live: live, byKey: byKey, blank: blank, splitIds: splitIds,
     settingsWithDefaults: settingsWithDefaults, normRole: normRole, daysInMonth: daysInMonth, weekdayOf: weekdayOf,
     parseTime: parseTime, hm24: hm24, clock: clock, shiftInfo: shiftInfo, PHT_AHEAD: PHT_AHEAD, estMin: estMin, phtFromEst: phtFromEst, minutesIntoShift: minutesIntoShift, statusAt: statusAt, suggestBreaks: suggestBreaks, checkBreaks: checkBreaks, BREAK_RULES: BREAK_RULES,
-    leaveTypeNow: leaveTypeNow, placeBreaks: placeBreaks, findOverlaps: findOverlaps, awayIntervals: awayIntervals, leaveDates: leaveDates, activeLeave: activeLeave, leaveCounts: leaveCounts, gridPlan: gridPlan, gridTabName: gridTabName, gridTabMonth: gridTabMonth, colLetter: colLetter, dayLabel: dayLabel, shiftWords: shiftWords,
+    leaveTypeNow: leaveTypeNow, patternShifts: patternShifts, gridIsDraft: gridIsDraft, prevMonthOf: prevMonthOf, placeBreaks: placeBreaks, findOverlaps: findOverlaps, awayIntervals: awayIntervals, leaveDates: leaveDates, activeLeave: activeLeave, leaveCounts: leaveCounts, gridPlan: gridPlan, gridTabName: gridTabName, gridTabMonth: gridTabMonth, colLetter: colLetter, dayLabel: dayLabel, shiftWords: shiftWords,
     isAdmin: isAdmin, isTL: isTL, isAgentRole: isAgentRole, capabilities: capabilities, buildScope: buildScope, inScope: inScope,
     buildIndex: buildIndex, toCsv: toCsv, fmtRate: fmtRate, rate: rate,
     resolveUser: resolveUser, publicUser: publicUser, handle: handle, WRITE_ACTIONS: WRITE_ACTIONS, generateSynthetic: generateSynthetic,
@@ -2301,7 +2339,7 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     "Lajo, Ella Mae": "18mpAaayLUqGVVFRxJNL0m1758KmbD2_L",
     "Aban, Ma Melanie": "1PoMv9DLMKMmQOKtViCjwC1WGTkBtYqUh",
     "Villarta, Remington": "1hYaQZXTDBvad10bskgII8Zcr8K8Ve30s",
-    "Lumactod, Nicole": "1pfZJOfGWRlsoDcaGn9i1kOmvvr6N-yVo",
+    "Lumactod, Nikki": "1pfZJOfGWRlsoDcaGn9i1kOmvvr6N-yVo",
     "Dujale, John Vincent": "1pZPgL6iVxM3ESm-Qgn7HlydSF8VNXG61",
     "Navarro, Stephanie": "1qj57VqzTh9eEDx1BCn_JJdwFz1gFbp4u",
     "Lopez, Maria Nelia": "1wbfqhNlp7QrtFacooSH5ID0smP_i_Oyr",
@@ -2739,8 +2777,8 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var m = openModal({ title: esc(a.FullName), sub: esc(fmtLong(d) + ' · ' + campName(a.CampaignID)),
       body: (lv ? '<div class="note" style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="flex:1">' + esc((lv.Status === 'Approved' ? 'Approved leave: ' : 'Leave requested: ') + lv.LeaveType + ' (' + lv.Portion + ')' + (lv.Reason ? ' · ' + lv.Reason : '')) + '</span>' + (lv.Status === 'Pending' && cap('approveLeave') ? '<button class="btn btn-sm btn-primary" data-act="vlDecide" data-v="Approved" data-id="' + esc(lv.LeaveID) + '">Approve</button><button class="btn btn-sm" data-act="vlDecide" data-v="Declined" data-id="' + esc(lv.LeaveID) + '">Decline</button>' : '') + '</div>' : '') +
         '<div class="day-shift"><span class="chip chip-' + (x && x.Shift ? shiftTone(x.Shift) || 'off' : 'off') + '">' + esc(x && x.Shift ? (si.off ? 'Rest day' : TONE_NAME[shiftTone(x.Shift)]) : 'No shift') + '</span><b>' + esc(x && x.Shift ? (si.off ? 'Rest day' : shiftText(x.Shift) + ' PHT') : 'Not scheduled') + '</b>' + (x && x.Shift && !si.off ? '<small class="est-line">' + esc(shiftEst(x.Shift)) + '</small>' : '') + '<small class="muted">To change the shift, edit the schedule sheet' + (S.settings.GridUrl ? ' (<a href="' + esc(S.settings.GridUrl) + '" target="_blank" rel="noopener">open</a>)' : '') + '.</small></div>' +
-        (working ? timeline(x, null) + '<div class="fgrid" style="margin-top:12px"><div><label class="lbl" for="ed-b1">1st break (15 min)</label><input id="ed-b1" class="input" type="time" step="900" value="' + esc(x.Break1) + '"></div><div><label class="lbl" for="ed-l">Lunch (1 hour)</label><input id="ed-l" class="input" type="time" step="900" value="' + esc(x.Lunch) + '"></div>' +
-          '<div><label class="lbl" for="ed-b2">Last break (15 min)</label><input id="ed-b2" class="input" type="time" step="900" value="' + esc(x.Break2) + '"></div><div style="align-self:end"><button class="btn btn-sm" data-act="edSuggest">Suggest by the rules</button></div><div class="span2 small" id="ed-w"></div>' +
+        (working ? timeline(x, null) + '<div class="fgrid" style="margin-top:12px"><div><label class="lbl" for="ed-b1">1st break (15 min)</label><input id="ed-b1" class="input" type="time" step="900" value="' + esc(C.parseTime(x.Break1) === null ? '' : C.hm24(C.parseTime(x.Break1))) + '"></div><div><label class="lbl" for="ed-l">Lunch (1 hour)</label><input id="ed-l" class="input" type="time" step="900" value="' + esc(C.parseTime(x.Lunch) === null ? '' : C.hm24(C.parseTime(x.Lunch))) + '"></div>' +
+          '<div><label class="lbl" for="ed-b2">Last break (15 min)</label><input id="ed-b2" class="input" type="time" step="900" value="' + esc(C.parseTime(x.Break2) === null ? '' : C.hm24(C.parseTime(x.Break2))) + '"></div><div style="align-self:end"><button class="btn btn-sm" data-act="edSuggest">Suggest by the rules</button></div><div class="span2 small" id="ed-w"></div>' +
           '<div class="span2"><label class="lbl" for="ed-n">Note</label><input id="ed-n" class="input" maxlength="500" value="' + esc(x.Notes) + '"></div></div>' : ''),
       foot: '<button class="btn" data-act="closeModal">' + (working ? 'Cancel' : 'Close') + '</button>' + (working ? '<button class="btn btn-primary" id="ed-ok">Save</button>' : '') });
     if (!working) return;
@@ -2782,8 +2820,8 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var page = head + '<section class="card card-flush"><div class="table-wrap"><table class="t br-t"><thead><tr><th>Agent</th><th>Shift</th><th>1st break</th><th>Lunch</th><th>Last break</th><th class="br-tl-h"><div class="br-hours">' + hours.join('') + '</div></th></tr></thead><tbody>' +
       rows.map(function (x) {
         var si = C.shiftInfo(x.d.Shift), w = C.checkBreaks(x.d), blk = function (t, len, cls) { var v = C.parseTime(t); return v === null ? '' : '<i class="' + cls + '" style="left:' + pos(v) + '%;width:' + (len / span * 100) + '%"></i>'; };
-        return '<tr data-day="' + esc(x.d.DayID) + '" class="' + (rows.indexOf(x) % 2 ? 'alt' : '') + '"><td><div class="who">' + avatar(x.a, 'av') + '<div><b>' + esc(x.a.FullName) + (ro && x.a.AgentID === myAgent().AgentID ? ' (you)' : '') + '</b><div class="t-sub">' + esc(campName(x.a.CampaignID)) + '</div>' + (ovNote[x.a.AgentID] ? '<div class="br-ov">' + esc(ovNote[x.a.AgentID]) + '</div>' : '') + '</div></div></td><td style="white-space:nowrap">' + esc(shiftText(x.d.Shift)) + '</td>' +
-          ['Break1', 'Lunch', 'Break2'].map(function (k3) { return ro ? '<td class="br-ro">' + esc(x.d[k3] ? C.clock(x.d[k3]) : '—') + '</td>' : '<td><input type="time" step="900" class="input input-sm br-in" data-a="' + esc(x.a.AgentID) + '" data-k="' + k3 + '" value="' + esc(x.d[k3]) + '" aria-label="' + esc(x.a.FullName + ' ' + k3) + '"></td>'; }).join('') +
+        return '<tr data-day="' + esc(x.d.DayID) + '" class="' + (rows.indexOf(x) % 2 ? 'alt' : '') + '"><td><div class="who">' + avatar(x.a, 'av') + '<div><b>' + esc(x.a.FullName) + (ro && x.a.AgentID === myAgent().AgentID ? ' (you)' : '') + '</b><div class="t-sub">' + esc(campName(x.a.CampaignID)) + (ro ? '' : ' · <button class="linkbtn" data-act="brMonth" data-a="' + esc(x.a.AgentID) + '" title="Set these breaks and lunch for the rest of the month">Whole month</button>') + '</div>' + (ovNote[x.a.AgentID] ? '<div class="br-ov">' + esc(ovNote[x.a.AgentID]) + '</div>' : '') + '</div></div></td><td style="white-space:nowrap">' + esc(shiftText(x.d.Shift)) + '</td>' +
+          ['Break1', 'Lunch', 'Break2'].map(function (k3) { return ro ? '<td class="br-ro">' + esc(x.d[k3] ? C.clock(x.d[k3]) : '—') + '</td>' : '<td><input type="time" step="900" class="input input-sm br-in" data-a="' + esc(x.a.AgentID) + '" data-k="' + k3 + '" value="' + esc(C.parseTime(x.d[k3]) === null ? '' : C.hm24(C.parseTime(x.d[k3]))) + '" aria-label="' + esc(x.a.FullName + ' ' + k3) + '"></td>'; }).join('') +
           '<td class="br-tl"><div class="br-bar"><i class="br-shift" style="left:' + pos(si.start) + '%;width:' + (si.length / span * 100) + '%"></i>' + blk(x.d.Break1, 15, 'br-b') + blk(x.d.Lunch, 60, 'br-l') + blk(x.d.Break2, 15, 'br-b') + '</div>' + (w.length ? '<div class="small g-warn">⚠ ' + esc(w.join(' ')) + '</div>' : '') + '</td></tr>';
       }).join('') +
       '<tr class="br-cover"><td colspan="5"><b>On break or lunch</b><div class="t-sub">per 30 minutes · most at once: ' + maxC + '</div></td><td class="br-tl"><div class="br-bar">' + cover.map(function (c, k2) { return c ? '<i class="br-c" style="left:' + (k2 * 30 / span * 100) + '%;width:' + (30 / span * 100) + '%;opacity:' + (0.25 + 0.75 * c / Math.max(1, maxC)) + '" title="' + esc(C.clock(t0 + k2 * 30)) + ': ' + c + '">' + c + '</i>' : ''; }).join('') + '</div></td></tr>' +
@@ -2832,6 +2870,58 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
       ov.slice(0, 12).map(function (o) { return '<li>' + esc(dLabel(o.date)) + ': <b>' + esc(o.agent) + '</b>, ' + esc(o.what) + ' overlaps with <b>' + esc(o.with) + '</b> for ' + o.minutes + ' min</li>'; }).join('') + (ov.length > 12 ? '<li>and ' + (ov.length - 12) + ' more</li>' : '') + '</ul><p class="small muted">Open a day on this page to see the red notes under each agent.</p>',
       foot: '<button class="btn btn-primary" data-act="closeModal">OK</button>' });
   }
+  // ---------- one agent's breaks and lunch for the rest of the month ----------
+  ACT.brMonth = function (el) {
+    var f = S.f.breaks, aid = el.dataset.a, a = S.idx.agents[aid] || {}, base = dayOf(aid, f.date) || {}, bsi = C.shiftInfo(base.Shift);
+    if (!bsi.valid || bsi.off || bsi.blank) { toast('Choose a day when ' + (a.FullName || 'this agent') + ' is working.', 'warn'); return; }
+    var from = f.date > S.today ? f.date : S.today, end = monthEnd(f.date.slice(0, 7));
+    var tv = function (k) { var x = C.parseTime(base[k]); return x === null ? '' : C.hm24(x); };
+    var m = openModal({ title: 'Breaks and lunch for the whole month', sub: esc((a.FullName || aid) + ' · ' + dLabel(from) + ' to ' + dLabel(end)),
+      body: '<div class="fgrid three"><div><label class="lbl" for="bm-b1">1st break (15 min)</label><input id="bm-b1" class="input" type="time" step="900" value="' + esc(tv('Break1')) + '"></div>' +
+        '<div><label class="lbl" for="bm-l">Lunch (1 hour)</label><input id="bm-l" class="input" type="time" step="900" value="' + esc(tv('Lunch')) + '"></div>' +
+        '<div><label class="lbl" for="bm-b2">Last break (15 min)</label><input id="bm-b2" class="input" type="time" step="900" value="' + esc(tv('Break2')) + '"></div></div>' +
+        '<fieldset class="bm-mode" style="margin-top:14px;border:0;padding:0"><legend class="lbl">Apply to</legend>' +
+        '<label class="check"><input type="radio" name="bm-mode" value="same" checked> Days with the same shift (' + esc(C.shiftText ? C.shiftText(base.Shift) : base.Shift) + ')</label>' +
+        '<label class="check"><input type="radio" name="bm-mode" value="rel"> Every working day, the same time after the shift starts (adjusts to each day\'s shift)</label></fieldset>' +
+        '<div id="bm-w" style="margin-top:10px"></div><div id="bm-sum" class="note" style="margin-top:10px"></div>' +
+        '<p class="small muted" style="margin-top:8px">Past days, rest days and approved leave are not changed. The rules are a guide: the app warns but allows other times.</p>',
+      foot: '<button class="btn" data-act="closeModal">Cancel</button><button class="btn btn-primary" id="bm-ok">Apply</button>' });
+    function plan() {
+      var b1 = $('#bm-b1', m).value, l = $('#bm-l', m).value, b2 = $('#bm-b2', m).value, mode = $('input[name=bm-mode]:checked', m).value, out = [], skipped = 0;
+      var rel = function (t) { var x = C.parseTime(t); return x === null ? null : (x - bsi.start + 1440) % 1440; };
+      var r1 = rel(b1), rl = rel(l), r2 = rel(b2);
+      S.data.days.filter(function (d) { return d.AgentID === aid && d.Date >= from && d.Date <= end && !d.ArchivedAt; }).sort(function (p, q) { return p.Date < q.Date ? -1 : 1; }).forEach(function (d) {
+        var si = C.shiftInfo(d.Shift); if (!si.valid || si.off || si.blank || onLeaveAny(aid, d.Date)) return;
+        var item = { AgentID: aid, Date: d.Date, expectedVersion: d.RecordVersion };
+        if (mode === 'same') { if (si.label !== bsi.label) { skipped++; return; } item.Break1 = b1; item.Lunch = l; item.Break2 = b2; }
+        else {
+          var fits = [[r1, 15], [rl, 60], [r2, 15]].every(function (x) { return x[0] === null || x[0] + x[1] <= si.length; });
+          if (!fits) { skipped++; return; }
+          item.Break1 = r1 === null ? '' : C.hm24((si.start + r1) % 1440); item.Lunch = rl === null ? '' : C.hm24((si.start + rl) % 1440); item.Break2 = r2 === null ? '' : C.hm24((si.start + r2) % 1440);
+        }
+        out.push(item);
+      });
+      return { items: out, skipped: skipped, mode: mode };
+    }
+    function refresh() {
+      var p = plan(), w = C.checkBreaks({ Shift: base.Shift, Break1: $('#bm-b1', m).value, Lunch: $('#bm-l', m).value, Break2: $('#bm-b2', m).value });
+      $('#bm-w', m).innerHTML = w.map(function (x) { return '<div class="g-warn">' + esc(x) + '</div>'; }).join('');
+      $('#bm-sum', m).innerHTML = p.items.length ? '<b>' + plural(p.items.length, 'day') + '</b> will be updated' + (p.skipped ? ' · ' + plural(p.skipped, 'day') + ' skipped (' + (p.mode === 'same' ? 'a different shift' : 'the times don\'t fit that shift') + ')' : '') + '.' : 'No days to update in this range' + (p.skipped ? ' (' + plural(p.skipped, 'day') + ' with a different shift: try "Every working day")' : '') + '.';
+      $('#bm-ok', m).disabled = !p.items.length;
+    }
+    $$('input', m).forEach(function (i) { i.addEventListener('input', refresh); i.addEventListener('change', refresh); }); refresh();
+    $('#bm-ok', m).onclick = function () {
+      var p = plan(), btn = this; if (!p.items.length) return;
+      busy(btn, true);
+      Api.write('saveDays', { days: p.items }, 'Breaks for the month').then(function (res) {
+        closeModal(true); render();
+        var w = (res.warnings || []).filter(function (x) { return /overlaps|break|lunch/i.test(x); });
+        if (!w.length) { toast(plural(p.items.length, 'day') + ' updated for ' + (a.FullName || aid) + '. No clashes with teammates.', 'ok', 6000); return; }
+        openModal({ title: plural(p.items.length, 'day') + ' updated, with ' + plural(w.length, 'warning'), body: '<p>The times were saved. Please check these:</p><ul>' + w.slice(0, 15).map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + (w.length > 15 ? '<li>and ' + (w.length - 15) + ' more</li>' : '') + '</ul>',
+          foot: '<button class="btn btn-primary" data-act="closeModal">OK</button>' });
+      }, function (e) { busy(btn, false); writeError(e); });
+    };
+  };
   ACT.brSave = function (el) {
     var f = S.f.breaks, items = {};
     $$('.br-in').forEach(function (i) { var d = dayOf(i.dataset.a, f.date); if (d && (d[i.dataset.k] || '') !== i.value) { var it = items[i.dataset.a] = items[i.dataset.a] || { AgentID: i.dataset.a, Date: f.date, expectedVersion: d.RecordVersion }; it[i.dataset.k] = i.value; } });
@@ -2943,7 +3033,8 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     var dates = gridDates(f.start); ensureMonth(dates[0].slice(0, 7)); ensureMonth(dates[dates.length - 1].slice(0, 7));
     var gs = gridSync(), url = S.settings.GridUrl, probs = gs ? (gs.problems || []) : [], warns = gs ? (gs.warnings || []) : [];
     var bar = '<section class="card sync-bar"><span class="ic ic-leave" aria-hidden="true">' + icon('refresh') + '</span><span class="sb-t"><b>' + (gs ? 'Synced with the Google Sheet · ' + esc(agoText(gs.at)) : 'Not synced with a Google Sheet yet') + ' ' + infoTip('Shifts are edited in the schedule sheet (team leads and WFM only; agents never see it). Breaks and lunch are set here, by the rules. Dates and shift times are PHT; the highlighted day is today in EST.') + '</b></span>' +
-      (url ? '<a class="btn btn-outline" href="' + esc(url) + '" target="_blank" rel="noopener">Open the sheet</a>' : '') + '<button class="btn" data-act="printWeek">Print week</button><button class="btn btn-primary" data-act="syncNow">Sync now</button></section>';
+      (url ? '<a class="btn btn-outline" href="' + esc(url) + '" target="_blank" rel="noopener">Open the sheet</a>' : '') + (isAdmin() ? '<button class="btn" data-act="prepMonth">Prepare next month</button>' : '') + '<button class="btn" data-act="printWeek">Print week</button><button class="btn btn-primary" data-act="syncNow">Sync now</button></section>' +
+      (gs && gs.drafts && gs.drafts.length ? '<div class="draft-note" role="note"><b>Draft, not published yet:</b> ' + esc(gs.drafts.join(', ')) + '. Agents don\'t see ' + (gs.drafts.length === 1 ? 'this month' : 'these months') + ' until its Status (cell D1 of the tab) says READY.</div>' : '');
     var attn = probs.length || warns.length ? '<section class="attn"><b>' + plural(probs.length + warns.length, 'cell') + ' in the sheet need' + (probs.length + warns.length === 1 ? 's' : '') + ' attention</b><ul>' +
       probs.concat(warns).slice(0, 8).map(function (x) { return '<li><b>' + esc((x.agent || '') + (x.date ? ' · ' + dLabel(x.date) : '')) + '</b> <span>' + esc(x.reason) + '</span> <small class="muted">' + esc((x.tab ? x.tab + ' · ' : '') + 'cell ' + x.cell) + '</small>' + (url ? ' <a href="' + esc(url) + '" target="_blank" rel="noopener">Show in sheet</a>' : '') + '</li>'; }).join('') + '</ul></section>' : '';
     var ags = scopedAgents();
@@ -2988,6 +3079,25 @@ if (typeof module !== 'undefined' && module.exports) { module.exports = MemoryRe
     });
   }
   window.addEventListener('resize', function () { clearTimeout(S.tbT); S.tbT = setTimeout(placeTodayBands, 120); });
+
+  // ---------- Prepare next month: a new tab in the schedule sheet, filled from last month's pattern, as a DRAFT ----------
+  ACT.prepMonth = function () {
+    var cur = S.today.slice(0, 7), months = [1, 2, 3].map(function (k) { return monthAdd(cur, k); });
+    var m = openModal({ title: 'Prepare a month', body: '<p>Creates the month\'s tab in the schedule sheet with every active agent, filled in from <b>the month before</b>: each agent gets the shift they usually worked on that weekday (rest days included). Shifts already in the app for that month are kept.</p>' +
+      '<div class="fgrid"><div><label class="lbl" for="pm-m">Month</label><select id="pm-m" class="input">' + opts(months.map(function (x) { return [x, monthLabel(x) + ' (based on ' + monthLabel(C.prevMonthOf(x)) + ')']; }), months[0]) + '</select></div></div>' +
+      '<div class="note" style="margin-top:12px">The new tab starts as a <b>DRAFT</b>: the app checks it but agents don\'t see it. Review holidays, leave and changes in the sheet, then set its Status (cell D1) to <b>READY</b>. It goes live on the next sync, with breaks and lunch placed so no one in the same campaign is away at the same time.</div>',
+      foot: '<button class="btn" data-act="closeModal">Cancel</button><button class="btn btn-primary" id="pm-ok">Prepare</button>' });
+    $('#pm-ok', m).onclick = function () {
+      var month = $('#pm-m', m).value, btn = this;
+      if (S.mode === 'demo') { closeModal(true); toast('In the demo there is no schedule sheet. On the live app this creates the "' + monthLabel(month) + '" tab, filled from ' + monthLabel(C.prevMonthOf(month)) + '\'s pattern, as a draft.', 'ok', 8000); return; }
+      busy(btn, true);
+      Api.write('prepareGridMonth', { month: month }, 'Prepare ' + monthLabel(month)).then(function (res) {
+        closeModal(true); var p = res.prepared || {};
+        openModal({ title: monthLabel(month) + ' is ready to review', body: '<p>The tab <b>' + esc(p.tab) + '</b> was created with ' + plural(p.agents || 0, 'agent') + '; ' + plural(p.fromPattern || 0, 'shift') + ' were filled in from ' + esc(p.baseTab) + '\'s pattern.</p><ol><li>Open the sheet and check holidays, approved leave and any changes.</li><li>Set the Status (cell D1) to <b>READY</b>.</li><li>Within 5 minutes (or with Sync now) the month goes live for agents.</li></ol>',
+          foot: '<button class="btn" data-act="closeModal">Close</button>' + (p.url ? '<a class="btn btn-primary" href="' + esc(p.url) + '" target="_blank" rel="noopener">Open the sheet</a>' : '') });
+      }, function (e) { busy(btn, false); writeError(e); });
+    };
+  };
 
   // ================= shared write helpers =================
   function busy(btn, on) { if (!btn) return; btn.disabled = on; if (on) { btn.dataset.label = btn.textContent; btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;margin-right:6px"></span>Saving…'; } else if (btn.dataset.label) btn.textContent = btn.dataset.label; }
